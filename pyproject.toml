@@ -1,0 +1,26 @@
+[project]
+name = "learning-ml"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "torch>=2.7.1",
+    "torchaudio>=2.7.1",
+    "torchvision>=0.22.1",
+    "numpy>1.23.5",
+    "jupyterthemes>=0.20.0",
+    "jax[cuda12]>=0.5.3",
+    "polars>=1.30.0",
+    "flax>=0.10.6",
+    "optax>=0.2.5",
+    "pip>=25.1.1",
+    "gym>=0.26.2",
+    "tensorflow>=2.19.0",
+    "tensorflow-datasets>=4.9.9",
+    "pandas>=2.3.0",
+    "d2l",
+]
+
+[tool.uv.sources]
+d2l = { path = "d2l-en/jax" }
