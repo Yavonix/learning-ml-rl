@@ -9,3 +9,6 @@ wheels/
 # Virtual environments
 .venv
 d2l-en
+
+checkpoints/
+wandb-logs/
