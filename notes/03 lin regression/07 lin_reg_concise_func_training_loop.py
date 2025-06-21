@@ -41,53 +41,34 @@ def loss_fn(model, batch):
     return optax.l2_loss(y_pred, y).mean()
 
 @nnx.jit
-def train_step(model: nnx.Module, optimiser: nnx.Optimizer, batch: Tuple[jax.Array, jax.Array]):
+def train_step(graphdef, state, batch: Tuple[jax.Array, jax.Array]):
+    model, optimiser = nnx.merge(graphdef, state)
     loss, grads = nnx.value_and_grad(loss_fn)(model, batch)
     optimiser.update(grads)
-    return loss
+    _, state = nnx.split((model, optimiser))
+    return loss, state
 
-
-# path = ocp.test_utils.erase_and_create_empty('/home/roman/learning-ml/checkpoints')
-path = '/home/roman/learning-ml/checkpoints'
-options = ocp.CheckpointManagerOptions(max_to_keep=3, save_interval_steps=2)
-mngr = ocp.CheckpointManager(
-    path, options=options
-)
-
-## Load checkpointed model
-latest_step = mngr.latest_step()
-
-model: nnx.Linear
-
-if (latest_step == None): 
-    model: nnx.Linear = nnx.Linear(2, 1, rngs=rngs)
-    latest_step = 0
-else:
-    abstract_model: nnx.Linear = nnx.eval_shape(lambda: nnx.Linear(2, 1, rngs=nnx.Rngs(config.seed)))
-    graphdef, abstract_state = nnx.split(abstract_model)
-    state_restored = mngr.restore(
-        mngr.latest_step(),
-        args=ocp.args.StandardRestore(abstract_state),
-    )
-    model: nnx.Linear = nnx.merge(graphdef, state_restored)
-
+model = nnx.Linear(2, 1, rngs=rngs)
 optimiser = nnx.Optimizer(model, optax.sgd(config.learning_rate))
 
-for i in range(latest_step, latest_step + config.epochs):
+start_time = time.time()
+
+# we only traverse once at the start.
+graphdef, state = nnx.split((model, optimiser))
+
+for i in range(0, config.epochs):
     st = time.time()
     ls: list[float] = []
     for batch in dataloader:
-        loss = train_step(model, optimiser, batch)
+        loss, state = train_step(graphdef, state, batch)
         ls.append(loss)
         run.log({"train/batch_loss": loss})
-    run.log({"train/epoch_loss": sum(ls)/len(ls)})
-
-    _, model_tree = nnx.split(model)
-
-    mngr.save(i, args=ocp.args.StandardSave(model_tree))
+    run.log({"train/epoch_loss": sum(ls)/len(ls), "epoch": i})
 
     print(f"Epoch {i} in {time.time()-st:0.2f} sec")
 
-mngr.wait_until_finished()
+nnx.update((model, optimiser), state)
 
 print(f"w={model.kernel} b={model.bias}")
+
+print(f"Finished in {time.time()-start_time} sec")
