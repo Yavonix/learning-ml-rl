@@ -1,3 +1,4 @@
+from functools import partial
 from typing import Any, Tuple
 import time
 import jax.numpy as jnp
@@ -21,7 +22,8 @@ config.seed = 0
 config.batch_size = 256
 config.learning_rate = 1e-3
 config.epochs = 10
-
+config.weight_decay = 1e-5
+ 
 rngs = nnx.Rngs(params=config.seed)
 
 def syntheticRegressionData(w: jax.Array, b: float, n: int, rngs: nnx.Rngs):
@@ -35,11 +37,17 @@ X, y = syntheticRegressionData(w=jnp.array([2, -3.4]), b=4.2, n=100000, rngs=rng
 arr_ds = jdl.ArrayDataset(X, y)
 dataloader = jdl.DataLoader(arr_ds, 'jax', batch_size=config.batch_size, shuffle=True)
 
-def loss_fn(model, batch):
+def l2_penalty(w, weight_decay):
+    return weight_decay * (w ** 2).sum() / 2
+
+def loss_fn(model: nnx.Linear, batch, weight_decay=1e-5):
     x, y = batch
     y_pred = model(x)
     assert y_pred.shape == y.shape
-    return optax.l2_loss(y_pred, y).mean()
+    return optax.l2_loss(y_pred, y).mean() + l2_penalty(model.kernel, weight_decay)
+    # return optax.l2_loss(y_pred, y).mean() + optax.l2_loss()
+
+loss_fn = partial(loss_fn, weight_decay=config.weight_decay)
 
 @nnx.jit
 def train_step(model: nnx.Module, optimiser: nnx.Optimizer, batch: Tuple[jax.Array, jax.Array]):
