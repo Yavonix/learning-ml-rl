@@ -108,3 +108,31 @@ So this is effectively the weighted average of the surprise of $Q$ with weights 
 Therefore we can think of the cross-entropy classification objective in two ways:
 1. Maximising the likelihood of the observed data
 2. Minimising our surprisal
+
+## Problems with Softmax
+
+Softmax as we've described it is prone to instability. Very large values from our underlying output layer $\mathbf{o}$ may cause **numerical overflow** causing infs.
+
+### Potential Solution 1
+
+We could subtract $\bar{o} \stackrel{\textrm{def}}{=} \max_k o_k$ from all entries:
+
+$$
+\hat y_j = \frac{\exp o_j}{\sum_k \exp o_k} =
+\frac{\exp(o_j - \bar{o}) \exp \bar{o}}{\sum_k \exp (o_k - \bar{o}) \exp \bar{o}} =
+\frac{\exp(o_j - \bar{o})}{\sum_k \exp (o_k - \bar{o})}.
+$$
+
+This is still not perfect though. We may encounter **numerical underflow** where $\exp(o_j - \bar{o})$ evaluates to 0, which will causes infs when we take $\log \hat{y}_j$ as $\log 0$.
+
+### Potential Solution 2
+
+Rather, we could combine the softmax step into the loss step:
+
+$$
+\log \hat{y}_j =
+\log \frac{\exp(o_j - \bar{o})}{\sum_k \exp (o_k - \bar{o})} =
+o_j - \bar{o} - \log \sum_k \exp (o_k - \bar{o})
+$$
+
+Avoiding both overflow and underflow. Optax has this implemented as `softmax_cross_entropy_with_integer_labels`.
