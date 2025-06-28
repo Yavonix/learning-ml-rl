@@ -17,13 +17,13 @@ run = wandb.init( # ctrl m on local ui for dark mode
     project="learning-jax-mnist",
     job_type="simple-demo",
     dir="./wandb-logs",
-    mode="offline"
+    mode="disabled"
 )
 
 config: Any = run.config
 config.seed = 0
 config.batch_size = 256
-config.learning_rate = 1e-3
+config.learning_rate = 1e-1
 config.epochs = 10
 
 rngs = nnx.Rngs(params=config.seed)
@@ -50,8 +50,8 @@ def softmax(X: jnp.ndarray):
 ## Dataset loading
 
 pt_ds_transform = torchvision.transforms.Compose([torchvision.transforms.Resize((28,28)), lambda img: np.array(img, dtype=float) / 255.0])
-pt_ds_train = torchvision.datasets.FashionMNIST("/tmp/mnist/", download=True, transform=pt_ds_transform, train=True)
-pt_ds_val = torchvision.datasets.FashionMNIST("/tmp/mnist/", download=True, transform=pt_ds_transform, train=False)
+pt_ds_train = torchvision.datasets.MNIST("/var/tmp/mnist/", download=True, transform=pt_ds_transform, train=True)
+pt_ds_val = torchvision.datasets.MNIST("/var/tmp/mnist/", download=True, transform=pt_ds_transform, train=False)
 
 jdl.manual_seed(0)
 dl_train = jdl.DataLoader(pt_ds_train, 'pytorch', batch_size=config.batch_size, shuffle=True)
@@ -59,15 +59,17 @@ dl_val = jdl.DataLoader(pt_ds_val, 'pytorch', batch_size=config.batch_size, shuf
 
 ## Model definition
 
-class SoftMax(nnx.Module):
-    def __init__(self, din, dout, rngs: nnx.Rngs):
+class MLPClassifier(nnx.Module):
+    def __init__(self, din, hidden, dout, rngs: nnx.Rngs):
         self.din = din
         self.dout = dout
-        self.linear = nnx.Linear(din, dout, kernel_init=nnx.initializers.normal(0.01), bias_init=nnx.initializers.zeros, rngs=rngs)
+        self.linear1 = nnx.Linear(din, hidden, rngs=rngs)
+        self.linear2 = nnx.Linear(hidden, dout, rngs=rngs)
 
     def __call__(self, X: jax.Array):
         X = X.reshape((X.shape[0], -1))
-        return self.linear(X)
+        H = self.linear1(X)
+        return self.linear2(nnx.tanh(H))
 
 ## Loss definition
 
@@ -90,7 +92,11 @@ def eval_step(model: nnx.Module, metrics: nnx.MultiMetric, batch: tuple[jax.Arra
 
 ## Model initialisation
 
-model = SoftMax(784, 10, rngs)
+res = []
+
+# for k in range(4,12):
+
+model = MLPClassifier(784, 1024, 10, rngs)
 
 tx = optax.chain(optax.sgd(config.learning_rate))
 optimiser = nnx.Optimizer(model, tx)
@@ -102,6 +108,9 @@ metrics = nnx.MultiMetric(
 
 ## Train loop
 
+# print(f"Fitting with {2**k} hidden layers")
+# m = {}
+
 for i in range(config.epochs):
     print(f"epoch {i+1} of {config.epochs}")
 
@@ -110,7 +119,7 @@ for i in range(config.epochs):
 
     m = metrics.compute()
     metrics.reset()
-    run.log({"train/loss": m["loss"], "train/acc": m["acc"]})
+    # run.log({"train/loss": m["loss"], "train/acc": m["acc"]})
 
     for batch in dl_val:
         eval_step(model, metrics, batch)
@@ -118,7 +127,15 @@ for i in range(config.epochs):
     m = metrics.compute()
     print(m)
     metrics.reset()
-    run.log({"val/loss": m["loss"], "val/acc": m["acc"]})
+    # run.log({"val/loss": m["loss"], "val/acc": m["acc"]})
+    
+    # m['hidden'] = 2**k
+
+    # res.append(m)
+
+# for entry in res:
+#     print(entry)
+    
 
 # lets log some images and our classifications:
 
@@ -132,4 +149,4 @@ for i in range(config.epochs):
 
 # wandb.log({"examples": [wandb.Image(image, caption=label) for (image, label) in zip(images, labels)]})
 
-run.finish()
+# run.finish()

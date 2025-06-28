@@ -21,47 +21,34 @@ $$
 \epsilon_\mathcal{D}(f) = \frac{1}{n}\sum_{i=1}^n \mathbf{1}(f(\mathbf{x}^{(i)}) \neq y^{(i)}).
 $$
 
-Where $\epsilon_\mathcal{D}(f)$ is a statistical estimate of the population error $\epsilon(f)$. Let $p=\epsilon(f)$ thus $Z_i\sim\mathrm{Bernoulli}(p)$
+The error rate is the fraction wrong.
 
-Then
+Assume population error rate $p$.
 
-$$
-\epsilon_{\mathcal D}(f) =\frac1n\sum_{i=1}^n Z_i,
-$$
+Let $Z\sim\mathrm{Bernoulli}(p)$
 
-So then we know that:
+Then $\mathbf{E}[Z]=p$ and $\mathbf{Var}[Z]=p(1-p)$
 
-- $\mathbb{E}[\epsilon_{\mathcal D}(f)]=p$
-- $\mathbf{Var}[\epsilon_{\mathcal D}(f)]=p(1-p)$
+Then $\displaystyle\epsilon_n = \frac{1}{n}\sum_{i=1}^{n}Z_i$.
 
+Then $\mathbf{E}[\epsilon_n]=p$ and $\mathbf{Var}[\epsilon_n]=\frac{p(1-p)}{n}$
 
+Then assuming $Z_i$ is i.i.d, by CLT:
 
+$$\frac{\epsilon_n-\mathbf{E}[\epsilon_n]}{\mathbf{Var}[\epsilon_n]}\sim N(0, 1)$$
 
-By contrast *population error* is the *expected* fraction of examples in the underlying population (some $P(X,Y)$ with PDF $p(x,y)$) is:
+In other words:
 
-$$
-\epsilon(f) =  E_{(\mathbf{x}, y) \sim P} \mathbf{1}(f(\mathbf{x}) \neq y) =
-\int\int \mathbf{1}(f(\mathbf{x}) \neq y) p(\mathbf{x}, y) \;d\mathbf{x} dy.
-$$
+$$\hat p \sim N\left(p, \frac {p(1-p)}{n}\right)$$
 
-We can view $\epsilon_\mathcal{D}(f)$ as a statistical estimator of $\epsilon(f)$.
+Given $p(1-p)$ is maximised when $p=0.5$, then the **asymptotic** standard deviation of our estimate $\epsilon_\mathcal{D}(f)$ of the error $\epsilon_\mathcal{D}(f)$ cannot be greater than $\sqrt{0.25/n}$.
 
-  Then
+## Hoeffding's theorem
 
-$$
+Used when you need a **non-asymptotic** estimate of n.
 
-\qquad
-\mathrm{Var}\bigl(\epsilon_{\mathcal D}(f)\bigr)
-=\mathrm{Var}\!\Bigl(\tfrac1n\sum_i Z_i\Bigr)
-=\frac1{n^2}\sum_i\mathrm{Var}(Z_i)
-=\frac{\sigma^2}{n}.
-$$
-
-Taking the square‐root gives the standard error
-
-$$
-\sqrt{\mathrm{Var}\bigl(\epsilon_{\mathcal D}(f)\bigr)}
-=\frac{\sigma}{\sqrt n}.
-$$
-
-Therefore
+Provides an upper bound on the probability that the sum of bounded independent random variables deviates from its expected value by more than a certain amount. For all $t > 0$:
+$$\begin{align}
+\operatorname{P} \left(S_n - \mathrm{E}\left [S_n \right] \geq t \right) &\leq \exp \left(-\frac{2t^2}{\sum_{i=1}^n (b_i - a_i)^2} \right) \\
+\operatorname{P} \left(\left |S_n - \mathrm{E}\left [S_n \right] \right | \geq t \right) &\leq 2\exp \left(-\frac{2t^2}{\sum_{i=1}^n(b_i - a_i)^2} \right)
+\end{align}$$

@@ -10,7 +10,7 @@ dependencies = [
     "torchvision>=0.22.1",
     "numpy>1.23.5",
     "jupyterthemes>=0.20.0",
-    "jax[cuda12]>=0.5.3",
+    "jax>=0.5.3",
     "polars>=1.30.0",
     "flax>=0.10.6",
     "optax>=0.2.5",
@@ -23,7 +23,8 @@ dependencies = [
     "jax-dataloader>=0.1.3",
     "wandb[media]>=0.20.1",
     "pillow>=11.2.1",
+    "scikit-learn>=1.7.0",
 ]
 
 [tool.uv.sources]
-d2l = { path = "d2l-en/jax" }
+# d2l = { path = "d2l-en/jax" }

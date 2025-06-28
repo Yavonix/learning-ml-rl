@@ -13,7 +13,8 @@ run = wandb.init( # ctrl m on local ui for dark mode
     entity="roman",
     project="learning-jax",
     job_type="simple-demo",
-    dir="./wandb-logs"
+    dir="./wandb-logs",
+    mode="disabled"
 )
 
 config: Any = run.config
@@ -30,7 +31,7 @@ def syntheticRegressionData(w: jax.Array, b: float, n: int, rngs: nnx.Rngs):
     y = (X * w).sum(axis=1, keepdims=True) + b + noise
     return (X, y)
 
-X, y = syntheticRegressionData(w=jnp.array([2, -3.4]), b=4.2, n=100000, rngs=rngs)
+X, y = syntheticRegressionData(w=jnp.array([2, -3.4]), b=4.2, n=1461, rngs=rngs)
 
 arr_ds = jdl.ArrayDataset(X, y)
 dataloader = jdl.DataLoader(arr_ds, 'jax', batch_size=config.batch_size, shuffle=True)
