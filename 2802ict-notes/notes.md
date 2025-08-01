@@ -1,0 +1,2 @@
+State:
+[(dirt, robot),(),()]
