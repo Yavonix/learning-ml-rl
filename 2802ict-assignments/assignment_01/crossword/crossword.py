@@ -1,9 +1,12 @@
+from typing import Literal
+
+
 class Variable():
 
     ACROSS = "across"
     DOWN = "down"
 
-    def __init__(self, i, j, direction, length):
+    def __init__(self, i: int, j: int, direction: Literal["across", "down"], length: int):
         """Create a new variable with starting point, direction, and length."""
         self.i = i
         self.j = j
@@ -62,7 +65,7 @@ class Crossword():
             self.words = set(f.read().upper().splitlines())
 
         # Determine variable set
-        self.variables = set()
+        self.variables: set[Variable] = set()
         for i in range(self.height):
             for j in range(self.width):
 
@@ -108,7 +111,7 @@ class Crossword():
         # For any pair of variables v1, v2, their overlap is either:
         #    None, if the two variables do not overlap; or
         #    (i, j), where v1's ith character overlaps v2's jth character
-        self.overlaps = dict()
+        self.overlaps: dict[tuple[Variable, Variable], tuple[int, int] | None] = dict()
         for v1 in self.variables:
             for v2 in self.variables:
                 if v1 == v2:
@@ -125,7 +128,7 @@ class Crossword():
                         cells2.index(intersection)
                     )
 
-    def neighbors(self, var):
+    def neighbors(self, var: Variable) -> set[Variable]:
         """Given a variable, return set of overlapping variables."""
         return set(
             v for v in self.variables

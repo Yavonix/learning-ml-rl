@@ -73,10 +73,7 @@ class Maze(Maze_Common):
                 if neighbour.depth > max_depth:
                     cutoff_occurred = True
                     continue
-                if (
-                    neighbour.state not in self.explored
-                    and neighbour.state not in frontier
-                ):
+                if neighbour.state not in self.explored and neighbour.state not in frontier:
                     frontier.add(neighbour)
 
         if cutoff_occurred:
