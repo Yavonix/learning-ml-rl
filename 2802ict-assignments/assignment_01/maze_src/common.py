@@ -11,7 +11,11 @@ class Node:
     state: State
     parent: 'Node | None'
     action: Action | None
-    depth: int
+    depth: int = 0
+
+    ## for the priority queue if two nodes have the same computed f cost
+    def __lt__(self, other: 'Node') -> bool:
+        return self.depth < other.depth
 
 
 class Maze_Common():
@@ -178,3 +182,25 @@ class NoSolutionError(Exception):
 
 class DepthLimitReachedError(Exception):
     pass
+
+class FrontierADT():
+    def __contains__(self, state: State) -> bool:
+        raise NotImplementedError
+    
+    def empty(self):
+        raise NotImplementedError
+    
+    def add(self, node: Node):
+        raise NotImplementedError
+    
+    def extend(self, nodes: list[Node] | Iterable[Node]):
+        raise NotImplementedError
+    
+    def remove(self, node: Node):
+        raise NotImplementedError
+    
+    def pop(self) -> Node:
+        raise NotImplementedError
+    
+    def size(self) -> int:
+        raise NotImplementedError

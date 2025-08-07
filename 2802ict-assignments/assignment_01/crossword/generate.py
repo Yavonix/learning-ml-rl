@@ -1,3 +1,4 @@
+import copy
 from functools import reduce
 from itertools import product
 import sys
@@ -150,16 +151,30 @@ class CrosswordCreator():
         return False if one or more domains end up empty.
         """
         
-        if not arcs: arcs = list(self.crossword.overlaps)
+        if not arcs: arcs = [(x, y) for (x, y), o in self.crossword.overlaps.items() if o]
 
         while arcs:
             arc = arcs.pop(0)
             if self.revise(arc[0], arc[1]):
                 if len(self.domains[arc[0]]) == 0: return False # all remaining nodes gone
                 arcs.extend([(neighbour, arc[0]) for neighbour in self.crossword.neighbors(arc[0])])
-                # arcs.extend(n_arc for n_arc in self.crossword.overlaps if n_arc[1] == arc[0])
 
         return True
+    
+    # def ac3(self, arcs: list[tuple[Variable, Variable]] | None = None) -> bool:
+    #     if not arcs: arcs = list(self.crossword.overlaps)
+    #     in_queue = set(arcs)
+    #     while arcs:
+    #         arc = arcs.pop(0)
+    #         in_queue.remove(arc)
+    #         if self.revise(arc[0], arc[1]):
+    #             if len(self.domains[arc[0]]) == 0: return False # all remaining nodes gone
+    #             for neighbour in self.crossword.neighbors(arc[0]):
+    #                 new_edge = (neighbour, arc[0])
+    #                 if new_edge not in in_queue: 
+    #                     arcs.append(new_edge)
+    #                     in_queue.add(new_edge)
+    #     return True
 
     def assignment_complete(self, assignment: dict[Variable, str]) -> bool:
         """
@@ -263,7 +278,7 @@ class CrosswordCreator():
         if self.assignment_complete(assignment): return assignment
 
         var = self.select_unassigned_variable(assignment)
-
+        
         for value in self.order_domain_values(var, assignment):
             assignment[var] = value
             if self.consistent(assignment):

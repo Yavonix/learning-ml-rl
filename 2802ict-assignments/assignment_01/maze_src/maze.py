@@ -1,6 +1,7 @@
 import sys
 from dataclasses import dataclass, field
 from typing import Callable, Iterable
+import heapq
 
 from common import (
     DepthLimitReachedError,
@@ -9,41 +10,71 @@ from common import (
     Node,
     State,
     Maze_Common,
+    FrontierADT
 )
 
-
-@dataclass
-class StackFrontier:
-    frontier: list[Node] = field(default_factory=list)
-
+class StackFrontier(FrontierADT):
     def __init__(self, initial_nodes: list[Node] | None = None):
         if initial_nodes:
             self.frontier = initial_nodes
+        else:
+            self.frontier = []
 
-    def __contains__(self, state: State) -> bool:
+    def __contains__(self, state) -> bool:
         return any(node.state == state for node in self.frontier)
 
     def empty(self):
         return len(self.frontier) == 0
 
-    def add(self, node: Node):
+    def add(self, node):
         self.frontier.append(node)
 
-    def extend(self, node: list[Node] | Iterable[Node]):
-        self.frontier.extend(node)
+    def extend(self, nodes):
+        self.frontier.extend(nodes)
 
-    def remove(self, node: Node):
+    def remove(self, node):
         """Remove node from frontier"""
         self.frontier.remove(node)
 
-    def pop(self) -> Node:
+    def pop(self):
         """Pop next node from frontier"""
         if self.empty():
             raise Exception("empty frontier")
         else:
             return self.frontier.pop()
 
-    def size(self) -> int:
+    def size(self):
+        return len(self.frontier)
+
+class PriorityQueueFrontier(FrontierADT):
+    def __init__(self, cost_fn: Callable[[Node], int], initial_nodes: list[Node] | None = None):
+        self.frontier: list[tuple[int, Node]] = []
+        self.score = cost_fn
+        if initial_nodes:
+            for node in initial_nodes:
+                heapq.heappush(self.frontier, (self.score(node), node))
+    
+    def __contains__(self, state) -> bool:
+        return any(node.state == state for (priority, node) in self.frontier)
+    
+    def empty(self):
+        return len(self.frontier) == 0
+    
+    def add(self, node):
+        heapq.heappush(self.frontier, (self.score(node), node))
+
+    def extend(self, nodes):
+        for node in nodes:
+            heapq.heappush(self.frontier, (self.score(node), node))
+
+    def remove(self, node):
+        self.frontier.remove((self.score(node), node))
+        heapq.heapify(self.frontier)
+
+    def pop(self):
+        return heapq.heappop(self.frontier)[1]
+    
+    def size(self):
         return len(self.frontier)
 
 
@@ -97,6 +128,31 @@ class Maze(Maze_Common):
                 raise e
 
         raise DepthLimitReachedError
+    
+    def manhattan_heuristic(self, node: Node) -> int:
+        return abs(self.goal[0]-node.state[0]) + abs(self.goal[1]-node.state[1])
+    
+    def astar_solve(self) -> None:
+        start_node = Node(state=self.start, parent=None, action=None, depth=0)
+        frontier = PriorityQueueFrontier(cost_fn=lambda n: n.depth + self.manhattan_heuristic(n), initial_nodes=[start_node]) # decides order
+        reached: dict[State, Node] = {start_node.state: start_node} # have I seen this state before, and was it via a better path?
+        explored: set[State] = set() # prevents reexpansion for consistent heuristic
+
+        while not frontier.empty():
+            node = frontier.pop()
+            self.num_explored += 1
+
+            if node.state == self.goal: # assuming heuristic is consistent
+                self.solution = node
+                return
+            
+            explored.add(node.state)
+            
+            for neighbour in self.neighbors(node):
+                s = neighbour.state
+                if s not in explored and (s not in reached or neighbour.depth < reached[s].depth):
+                    reached[s] = neighbour
+                    frontier.add(neighbour)
 
 
 if len(sys.argv) != 2:
@@ -108,7 +164,7 @@ if __name__ == "__main__":
 
     m.reset_stats()
     try:
-        m.ids_solve()
+        m.astar_solve()
     except NoSolutionError:
         pass
     except Exception as e:

@@ -68,6 +68,11 @@ Consistency implies admissibility.
 
 #### Admissible A*
 
+Required datastructures:
+- Priority queue
+- Reached map (Node -> Cost)
+Neighbour check: not in reached or node.f_cost < reached[node].f_cost
+
 Admissibility only guarantees any explored nodes n are cost optimal when its known path cost g(n) is no greater than the best possible completion cost still lurking on the frontier. That is,
 
 $$
@@ -81,6 +86,12 @@ Extra:
 - Cost optimality guaranteed even if heuristic is not admissibility but never overestimates a cost more than the difference between the optimal and second most optimal solutions.
 
 #### Consistent A*
+
+Required datastructures:
+- Priority queue
+- Reached map (Node -> Cost)
+- Explored (prevent reexpansions)
+Neighbour check: not in explored and (not in reached or reached[node].f_cost < node.f_cost)
 
 Consistency guarantees that any explored nodes n are cost optimal.
 
