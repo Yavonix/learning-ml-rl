@@ -1,7 +1,7 @@
 import sys
 from dataclasses import dataclass, field
 from typing import Callable, Iterable, Literal
-from typing import TypeAlias
+from typing import TypeAlias, Any
 
 Action: TypeAlias = Literal["u", "d", "l", "r"]
 State: TypeAlias = tuple[int, int]
@@ -17,11 +17,14 @@ class Node:
     def __lt__(self, other: 'Node') -> bool:
         return self.depth < other.depth
 
-
 class Maze_Common():
 
     def __init__(self, filename):
+        self.heuristic_cache: Any = None
+        if filename:
+            self.load_file(filename)
 
+    def load_file(self, filename):
         # Read file and set height and width of maze
         with open(filename) as f:
             contents = f.read()
@@ -64,6 +67,7 @@ class Maze_Common():
         self.num_explored = 0
         self.solution = None
         self.explored = set()
+        self.heuristic_cache = None
 
     def print(self):
         actions, path = self.recover_path(self.solution) if self.solution is not None else [None, None]

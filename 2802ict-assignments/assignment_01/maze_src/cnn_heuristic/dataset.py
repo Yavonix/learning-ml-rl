@@ -7,6 +7,99 @@ import random
 from scipy.ndimage import distance_transform_edt
 from PIL import Image
 
+FEATURE_NORMALISER = 316 # int((224**2 + 224**2)**0.5)
+LABEL_NORMALISER = 500 # a number I pulled out of nowhere (really should be the max possible distance in the training dataset)
+
+def generate_object_map(img: np.ndarray) -> np.ndarray:
+    """Accepts a HxW array where 1 represents obstacles and 0 represents free space"""
+    # Feature Processing
+    obstacle_map_np = np.ones((224,224))
+    size_h = obstacle_map_np.shape[0] - img.shape[0]
+    size_w = obstacle_map_np.shape[1] - img.shape[1]
+
+    rand_h = int(random.uniform(0, size_h))
+    rand_w = int(random.uniform(0, size_w))
+
+    ## Obstacle Map
+    obstacle_map_np[rand_h:rand_h+img.shape[0], rand_w:rand_w+img.shape[1]] = img
+
+    return obstacle_map_np
+
+def generate_euclid_transform_map(obstacle_map: np.ndarray) -> np.ndarray:
+    # euclidian distance transform
+    distance_map_np = np.array(distance_transform_edt(1 - obstacle_map))
+    # distance_map_np = distance_map_np / feature_normalising_constant
+    distance_map_np = distance_map_np / distance_map_np.max()
+    return distance_map_np
+
+def gen_random_goal(obstacle_map_np: np.ndarray):
+    gen_goal = lambda: (int(random.uniform(0, obstacle_map_np.shape[0])), int(random.uniform(0, obstacle_map_np.shape[1])))
+    goal = gen_goal()
+
+    # make sure goal is not obstacle
+    while obstacle_map_np[goal[0], goal[1]] == 1:
+        goal = gen_goal()
+    
+    return goal
+
+def generate_goal_map(obstacle_map_np: np.ndarray, goal: tuple[int,int]) -> np.ndarray:
+    y_coords = np.arange(obstacle_map_np.shape[0])
+    x_coords = np.arange(obstacle_map_np.shape[1])
+    xx, yy = np.meshgrid(x_coords, y_coords)
+    squared_dist = (xx - goal[1])**2 + (yy - goal[0])**2
+    # 5. Take the square root to get the final Euclidean distance
+    goal_map_np = np.sqrt(squared_dist)
+    goal_map_np = goal_map_np / FEATURE_NORMALISER
+
+    return goal_map_np
+
+def generate_label_map(obstacle_map_np: np.ndarray, goal: tuple[int,int]) -> np.ndarray:
+    heuristic_map = np.full_like(obstacle_map_np, 0)
+
+    starting_node = (*goal, 0)
+    # x, y, cost
+    nodes: list[tuple[int,int,int]] = [starting_node]
+    reached: set[tuple[int,int]] = {goal}
+
+    while nodes:
+        # print(nodes)
+        cur_node = nodes.pop(0)
+        loc = cur_node[0:2]
+        # print(cur_node)
+        heuristic_map[loc] = cur_node[2]
+
+        new_nodes: list[tuple[int,int,int]] = [(cur_node[0]+1, cur_node[1], cur_node[2]+1),
+                                                (cur_node[0]-1, cur_node[1], cur_node[2]+1),
+                                                (cur_node[0], cur_node[1]+1, cur_node[2]+1),
+                                                (cur_node[0], cur_node[1]-1, cur_node[2]+1)]
+        
+
+        def valid(node: tuple[int,int,int]):
+            loc = node[0:2]
+            if (loc[0] < 0 or loc[0] >= heuristic_map.shape[0]): return False
+            if (loc[1] < 0 or loc[1] >= heuristic_map.shape[1]): return False
+            if loc in reached: return False
+            if obstacle_map_np[loc] == 1: return False
+            reached.add(loc)
+            return True
+
+        nodes.extend(filter(valid, new_nodes))
+
+    heuristic_map = heuristic_map / LABEL_NORMALISER
+
+    return heuristic_map
+
+def convert_bool_to_obstacle_map(map: list[list[bool]]) -> np.ndarray:
+    """convert from map of bools to numpy map of 0 and 1"""
+
+    base = np.zeros((len(map), len(map[0])))
+
+    for row in range(len(map)):
+        for col in range(len(map[0])):
+            base[row,col] = 1 if map[row][col] else 0
+
+    return base
+
 class SingleFolderDataset(Dataset):
     def __init__(self, folder, transform=None, exts=(".png",".jpg",".jpeg")):
         p = Path(folder)
@@ -18,86 +111,21 @@ class SingleFolderDataset(Dataset):
 
     def __getitem__(self, idx):
         img = Image.open(self.files[idx]).convert("L")   # single-channel greyscale
-        img = np.array(img)
+        img = (255 - np.array(img))/255
+
         if self.transform:
             img = self.transform(img)
 
-        feature_normalising_constant = 316 # int((224**2 + 224**2)**0.5)
-        label_normalising_constant = 500 # a number I pulled out of nowhere (really should be the max possible distance in the training dataset)
-
-        # Feature Processing
-        
-        img = (255 - np.array(img))/255
-
-        obstacle_map_np = np.ones((224,224))
-        size_h = obstacle_map_np.shape[0] - img.shape[0]
-        size_w = obstacle_map_np.shape[1] - img.shape[1]
-
-        rand_h = int(random.uniform(0, size_h))
-        rand_w = int(random.uniform(0, size_w))
-
-        ## Obstacle Map
-        obstacle_map_np[rand_h:rand_h+img.shape[0], rand_w:rand_w+img.shape[1]] = img
-
-        ## Distance Map
-
-        # euclidian distance transform
-        distance_map_np = np.array(distance_transform_edt(1 - obstacle_map_np))
-        # distance_map_np = distance_map_np / feature_normalising_constant
-        distance_map_np = distance_map_np / distance_map_np.max()
-
-        ## Goal Map
-        goal = (int(random.uniform(rand_h, rand_h+img.shape[0])), int(random.uniform(rand_w, rand_w+img.shape[1])))
-
-        # make sure goal is not obstacle
-        while obstacle_map_np[goal[0], goal[1]] == 1:
-            goal = (int(random.uniform(rand_h, rand_h+img.shape[0])), int(random.uniform(rand_w, rand_w+img.shape[1])))
-        
-        y_coords = np.arange(obstacle_map_np.shape[0])
-        x_coords = np.arange(obstacle_map_np.shape[1])
-        xx, yy = np.meshgrid(x_coords, y_coords)
-        squared_dist = (xx - goal[1])**2 + (yy - goal[0])**2
-        # 5. Take the square root to get the final Euclidean distance
-        goal_map_np = np.sqrt(squared_dist)
-        goal_map_np = goal_map_np / feature_normalising_constant
+        obstacle_map_np = generate_object_map(img)
+        distance_map_np = generate_euclid_transform_map(obstacle_map_np)
+        goal = gen_random_goal(obstacle_map_np)
+        goal_map_np = generate_goal_map(obstacle_map_np, goal)
 
         final = np.stack([obstacle_map_np, distance_map_np, goal_map_np], axis=-1)
 
         # Label processing
-
-        heuristic_map = np.full_like(obstacle_map_np, 0)
-
-        starting_node = (*goal, 0)
-        # x, y, cost
-        nodes: list[tuple[int,int,int]] = [starting_node]
-        reached: set[tuple[int,int]] = {goal}
-
-        while nodes:
-            # print(nodes)
-            cur_node = nodes.pop(0)
-            loc = cur_node[0:2]
-            # print(cur_node)
-            heuristic_map[loc] = cur_node[2]
-
-            new_nodes: list[tuple[int,int,int]] = [(cur_node[0]+1, cur_node[1], cur_node[2]+1),
-                                                   (cur_node[0]-1, cur_node[1], cur_node[2]+1),
-                                                   (cur_node[0], cur_node[1]+1, cur_node[2]+1),
-                                                   (cur_node[0], cur_node[1]-1, cur_node[2]+1)]
-            
-
-            def valid(node: tuple[int,int,int]):
-                loc = node[0:2]
-                if (loc[0] < 0 or loc[0] >= heuristic_map.shape[0]): return False
-                if (loc[1] < 0 or loc[1] >= heuristic_map.shape[1]): return False
-                if loc in reached: return False
-                if obstacle_map_np[loc] == 1: return False
-                reached.add(loc)
-                return True
-
-            nodes.extend(filter(valid, new_nodes))
-
-        heuristic_map = heuristic_map / label_normalising_constant
-        # heuristic_map = heuristic_map
+        
+        heuristic_map = generate_label_map(obstacle_map_np, goal)
 
         heuristic_mask = np.where(heuristic_map == 0, 0, 1)
         heuristic_mask[goal] = 1

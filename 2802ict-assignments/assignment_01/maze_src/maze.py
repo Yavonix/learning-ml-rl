@@ -13,6 +13,20 @@ from common import (
     FrontierADT
 )
 
+import numpy as np
+from cnn_heuristic.dataset import (
+    generate_object_map, 
+    generate_euclid_transform_map,
+    gen_random_goal,
+    generate_goal_map,
+    convert_bool_to_obstacle_map,
+    LABEL_NORMALISER
+)
+from cnn_heuristic.model import Encoder_Decoder
+from flax import nnx
+import orbax.checkpoint as ocp
+
+
 class StackFrontier(FrontierADT):
     def __init__(self, initial_nodes: list[Node] | None = None):
         if initial_nodes:
@@ -132,9 +146,43 @@ class Maze(Maze_Common):
     def manhattan_heuristic(self, node: Node) -> int:
         return abs(self.goal[0]-node.state[0]) + abs(self.goal[1]-node.state[1])
     
+    def cnn_heuristic(self, node: Node) -> int:
+        assert self.width == self.height == 224
+
+        if self.heuristic_cache == None:
+            print("Generating heuristic map...")
+            rngs = nnx.Rngs(params=0)
+            checkpointer = ocp.StandardCheckpointer()
+            checkpoint_dir = "/home/roman/learning-ml/2802ict-assignments/assignment_01/maze_src/cnn_heuristic/checkpoints/save-no-normalisation"
+
+            abstract_model: Encoder_Decoder = nnx.eval_shape(lambda: Encoder_Decoder(nnx.Rngs(0)))
+            graphdef, abstract_state = nnx.split(abstract_model)
+            restored_state = checkpointer.restore(checkpoint_dir, abstract_state)
+            model = nnx.merge(graphdef, restored_state)
+            model.eval() # recursively sets deterministic=True and use_running_average=True
+
+            @nnx.jit
+            def apply(m: Encoder_Decoder, x):
+                return m(x)
+
+            obstacle_map_np = convert_bool_to_obstacle_map(self.walls)
+            distance_map_np = generate_euclid_transform_map(obstacle_map_np)
+            goal = gen_random_goal(obstacle_map_np)
+            goal_map_np = generate_goal_map(obstacle_map_np, goal)
+
+            final = np.stack([obstacle_map_np, distance_map_np, goal_map_np], axis=-1)
+
+            self.heuristic_cache = apply(model, final)
+            print("Heuristic map generated!")
+
+        print(f"{node.state[0], node.state[1]} {self.heuristic_cache[node.state[0], node.state[1]] * LABEL_NORMALISER}")
+
+        return self.heuristic_cache[node.state[0], node.state[1]] * LABEL_NORMALISER
+
+    
     def astar_solve(self) -> None:
         start_node = Node(state=self.start, parent=None, action=None, depth=0)
-        frontier = PriorityQueueFrontier(cost_fn=lambda n: n.depth + self.manhattan_heuristic(n), initial_nodes=[start_node]) # decides order
+        frontier = PriorityQueueFrontier(cost_fn=lambda n: n.depth + self.cnn_heuristic(n), initial_nodes=[start_node]) # decides order
         reached: dict[State, Node] = {start_node.state: start_node} # have I seen this state before, and was it via a better path?
         explored: set[State] = set() # prevents reexpansion for consistent heuristic
 

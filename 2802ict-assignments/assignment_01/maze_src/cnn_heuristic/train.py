@@ -22,7 +22,7 @@ run = wandb.init( # ctrl m on local ui for dark mode
     project="2802ict",
     job_type="cnn-train",
     dir="./wandb-logs",
-    mode="offline"
+    mode="online"
 )
 
 path = Path('/home/roman/learning-ml/2802ict-assignments/assignment_01/maze_src/cnn_heuristic/checkpoints/')
@@ -32,7 +32,7 @@ config: Any = run.config
 config.seed = 0
 config.batch_size = 32
 config.learning_rate = 1e-2
-config.epochs = 100
+config.epochs = 10
 
 rngs = nnx.Rngs(params=config.seed)
 
@@ -44,8 +44,8 @@ def show_image(img: np.ndarray):
 
 ## Dataset loading
 
-pt_ds_train = SingleFolderDataset("./motion_planning_datasets/mazes/train")
-pt_ds_val = SingleFolderDataset("./motion_planning_datasets/mazes/validation")
+pt_ds_train = SingleFolderDataset("/home/roman/learning-ml/2802ict-assignments/assignment_01/maze_src/cnn_heuristic/motion_planning_datasets/mazes/train")
+pt_ds_val = SingleFolderDataset("/home/roman/learning-ml/2802ict-assignments/assignment_01/maze_src/cnn_heuristic/motion_planning_datasets/mazes/validation")
 
 jdl.manual_seed(0)
 dl_train = jdl.DataLoader(pt_ds_train, 'pytorch', batch_size=config.batch_size, shuffle=True)
@@ -116,7 +116,7 @@ graph, state = nnx.split(model)
 
 
 
-checkpointer.save(path / 'save-no-normalisation-100/', state)
+checkpointer.save(path / 'save-no-normalisation-10/', state)
 
 checkpointer.wait_until_finished()
 
