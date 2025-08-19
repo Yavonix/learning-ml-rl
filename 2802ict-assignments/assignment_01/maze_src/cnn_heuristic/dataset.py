@@ -7,8 +7,17 @@ import random
 from scipy.ndimage import distance_transform_edt
 from PIL import Image
 
-FEATURE_NORMALISER = 316 # int((224**2 + 224**2)**0.5)
-LABEL_NORMALISER = 500 # a number I pulled out of nowhere (really should be the max possible distance in the training dataset)
+# FEATURE_NORMALISER = 316 # int((224**2 + 224**2)**0.5)
+# LABEL_NORMALISER = 500 # a number I pulled out of nowhere (really should be the max possible distance in the training dataset)
+
+FEATURE_NORMALISER = 1 # int((224**2 + 224**2)**0.5)
+LABEL_NORMALISER = 1 # a number I pulled out of nowhere (really should be the max possible distance in the training dataset)
+NORMALISE_EUCLID_MAP = False
+
+# MAP_DIAGONAL = int((224**2 + 224**2)**0.5)       # 316
+# FEATURE_NORMALISER = MAP_DIAGONAL                # obstacle & goal distance
+# LABEL_NORMALISER = MAP_DIAGONAL                  # cost-to-go
+# NORMALISE_EUCLID_MAP = True                      # keep per-sample 0‒1 if you prefer
 
 def generate_object_map(img: np.ndarray) -> np.ndarray:
     """Accepts a HxW array where 1 represents obstacles and 0 represents free space"""
@@ -29,7 +38,8 @@ def generate_euclid_transform_map(obstacle_map: np.ndarray) -> np.ndarray:
     # euclidian distance transform
     distance_map_np = np.array(distance_transform_edt(1 - obstacle_map))
     # distance_map_np = distance_map_np / feature_normalising_constant
-    distance_map_np = distance_map_np / distance_map_np.max()
+    if NORMALISE_EUCLID_MAP:
+        distance_map_np = distance_map_np / distance_map_np.max()
     return distance_map_np
 
 def gen_random_goal(obstacle_map_np: np.ndarray):

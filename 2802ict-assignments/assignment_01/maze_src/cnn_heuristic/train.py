@@ -32,7 +32,7 @@ config: Any = run.config
 config.seed = 0
 config.batch_size = 32
 config.learning_rate = 1e-2
-config.epochs = 10
+config.epochs = 10000
 
 rngs = nnx.Rngs(params=config.seed)
 
@@ -88,6 +88,8 @@ metrics = nnx.MultiMetric(
 
 ## Train loop
 
+checkpointer = ocp.StandardCheckpointer()
+
 for i in range(config.epochs):
     print(f"epoch {i+1} of {config.epochs}")
 
@@ -109,16 +111,18 @@ for i in range(config.epochs):
     metrics.reset()
     run.log({"val/loss": m["loss"]})
 
+    if i % 100 == 0:
+        graph, state = nnx.split(model)
+        save_path = path / f'save-no-normalisation-{i}/'
+        if not save_path.exists():
+            checkpointer.save(save_path, state)
+            checkpointer.wait_until_finished()
+        print(f"saved checkpoint: {save_path}")
+
 # lets log some images and our classifications:
 
-checkpointer = ocp.StandardCheckpointer()
-graph, state = nnx.split(model)
 
 
-
-checkpointer.save(path / 'save-no-normalisation-10/', state)
-
-checkpointer.wait_until_finished()
 
 # X, y = next(iter(dl_train))
 

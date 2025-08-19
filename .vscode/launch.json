@@ -5,6 +5,14 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python Debugger: Current File with Arguments",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": "/home/roman/learning-ml/2802ict-assignments/assignment_01/maze_src/cnn_compatible_maps/6.txt"
+        },
+        {
             "name": "Python Debugger: Crossword0",
             "type": "debugpy",
             "request": "launch",

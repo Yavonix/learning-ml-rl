@@ -165,7 +165,7 @@ class Maze_Common():
                     fill = (220, 235, 113)
 
                 # Explored
-                elif path is not None and show_explored and self.explored and (i, j) in self.explored:
+                elif show_explored and self.explored and (i, j) in self.explored:
                     fill = (212, 97, 85)
 
                 # Empty cell

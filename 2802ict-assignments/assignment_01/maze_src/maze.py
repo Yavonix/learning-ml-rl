@@ -2,6 +2,7 @@ import sys
 from dataclasses import dataclass, field
 from typing import Callable, Iterable
 import heapq
+import time
 
 from common import (
     DepthLimitReachedError,
@@ -90,6 +91,10 @@ class PriorityQueueFrontier(FrontierADT):
     
     def size(self):
         return len(self.frontier)
+    
+    def is_best(self, node: Node):
+        smallest = heapq.nsmallest(1, self.frontier)[0]
+        return self.score(node) <= smallest[0]
 
 
 class Maze(Maze_Common):
@@ -153,7 +158,7 @@ class Maze(Maze_Common):
             print("Generating heuristic map...")
             rngs = nnx.Rngs(params=0)
             checkpointer = ocp.StandardCheckpointer()
-            checkpoint_dir = "/home/roman/learning-ml/2802ict-assignments/assignment_01/maze_src/cnn_heuristic/checkpoints/save-no-normalisation"
+            checkpoint_dir = "/home/roman/learning-ml/2802ict-assignments/assignment_01/maze_src/cnn_heuristic/checkpoints/save-no-normalisation-2100"
 
             abstract_model: Encoder_Decoder = nnx.eval_shape(lambda: Encoder_Decoder(nnx.Rngs(0)))
             graphdef, abstract_state = nnx.split(abstract_model)
@@ -167,22 +172,23 @@ class Maze(Maze_Common):
 
             obstacle_map_np = convert_bool_to_obstacle_map(self.walls)
             distance_map_np = generate_euclid_transform_map(obstacle_map_np)
-            goal = gen_random_goal(obstacle_map_np)
-            goal_map_np = generate_goal_map(obstacle_map_np, goal)
+            # goal = gen_random_goal(obstacle_map_np)
+            print(f"using goal {self.goal}")
+            goal_map_np = generate_goal_map(obstacle_map_np, self.goal)
 
             final = np.stack([obstacle_map_np, distance_map_np, goal_map_np], axis=-1)
 
             self.heuristic_cache = apply(model, final)
             print("Heuristic map generated!")
 
-        print(f"{node.state[0], node.state[1]} {self.heuristic_cache[node.state[0], node.state[1]] * LABEL_NORMALISER}")
+        # print(f"{node.state[0], node.state[1]} {self.heuristic_cache[node.state[0], node.state[1]] * LABEL_NORMALISER}")
 
-        return self.heuristic_cache[node.state[0], node.state[1]] * LABEL_NORMALISER
+        return self.heuristic_cache[node.state[0], node.state[1]] * LABEL_NORMALISER * 20
 
-    
-    def astar_solve(self) -> None:
+
+    def astar_solve_consistent(self) -> None:
         start_node = Node(state=self.start, parent=None, action=None, depth=0)
-        frontier = PriorityQueueFrontier(cost_fn=lambda n: n.depth + self.cnn_heuristic(n), initial_nodes=[start_node]) # decides order
+        frontier = PriorityQueueFrontier(cost_fn=lambda n: n.depth + self.manhattan_heuristic(n), initial_nodes=[start_node]) # decides order
         reached: dict[State, Node] = {start_node.state: start_node} # have I seen this state before, and was it via a better path?
         explored: set[State] = set() # prevents reexpansion for consistent heuristic
 
@@ -190,14 +196,55 @@ class Maze(Maze_Common):
             node = frontier.pop()
             self.num_explored += 1
 
+            # if (self.num_explored % 100 == 0): self.output_image("progress-2.png", show_explored=True, show_solution=False)
+            self.explored.add(node.state) # just for the image rendering
             explored.add(node.state)
+
+            if (self.num_explored % 500 == 0): 
+                self.output_image("progress-1.png", show_explored=True, show_solution=False)
+
             
             for neighbour in self.neighbors(node):
                 s = neighbour.state
                 if s not in explored and (s not in reached or neighbour.depth < reached[s].depth):
                     if neighbour.state == self.goal:
                         self.solution = neighbour
+                        self.output_image("progress-1.png", show_explored=True, show_solution=True)
                         return
+                    reached[s] = neighbour
+                    frontier.add(neighbour)
+
+    def astar_solve(self) -> None:
+        start_node = Node(state=self.start, parent=None, action=None, depth=0)
+        heuristic_fn = lambda n: n.depth + self.cnn_heuristic(n)
+        # heuristic_fn:Callable[[Node], int] = lambda n: n.depth + self.manhattan_heuristic(n) * 20
+        frontier = PriorityQueueFrontier(cost_fn=heuristic_fn, initial_nodes=[start_node]) # decides order
+        reached: dict[State, Node] = {start_node.state: start_node} # have I seen this state before, and was it via a better path?
+
+        solution:Node|None = None
+
+        while not frontier.empty():
+            node = frontier.pop()
+            self.num_explored += 1
+
+            self.explored.add(node.state) # just for the image rendering
+            # if (self.num_explored % 1000 == 0):
+            #     print(self.num_explored)
+            if (self.num_explored % 500 == 0): 
+                self.output_image("progress-2.png", show_explored=True, show_solution=False)
+
+            if node.state == self.goal:
+                if not solution or node.depth < solution.depth:
+                    solution = node
+            
+            if solution and frontier.is_best(solution):
+                self.solution=solution
+                self.output_image("progress-2.png", show_explored=True, show_solution=True)
+                return
+            
+            for neighbour in self.neighbors(node):
+                s = neighbour.state
+                if s not in reached or neighbour.depth < reached[s].depth:
                     reached[s] = neighbour
                     frontier.add(neighbour)
 
@@ -211,7 +258,8 @@ if __name__ == "__main__":
 
     m.reset_stats()
     try:
-        m.astar_solve()
+        # m.astar_solve()
+        m.astar_solve_consistent()
     except NoSolutionError:
         pass
     except Exception as e:
