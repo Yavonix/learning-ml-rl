@@ -10,7 +10,6 @@ dependencies = [
     "torchvision>=0.22.1",
     "numpy>1.23.5",
     "jupyterthemes>=0.20.0",
-    "jax>=0.5.3",
     "polars>=1.30.0",
     "flax>=0.10.6",
     "optax>=0.2.5",
@@ -28,6 +27,7 @@ dependencies = [
     "lark>=1.2.2",
     "pytest-html>=4.1.1",
     "pytest-benchmark>=5.1.0",
+    "jax[cuda12]>=0.5.3",
 ]
 
 [tool.uv.sources]
