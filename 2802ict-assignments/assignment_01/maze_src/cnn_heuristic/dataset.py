@@ -22,6 +22,9 @@ class SingleFolderDataset(Dataset):
         if self.transform:
             img = self.transform(img)
 
+        feature_normalising_constant = 316 # int((224**2 + 224**2)**0.5)
+        label_normalising_constant = 500 # a number I pulled out of nowhere (really should be the max possible distance in the training dataset)
+
         # Feature Processing
         
         img = (255 - np.array(img))/255
@@ -40,7 +43,8 @@ class SingleFolderDataset(Dataset):
 
         # euclidian distance transform
         distance_map_np = np.array(distance_transform_edt(1 - obstacle_map_np))
-        # distance_map_np = distance_map_np / distance_map_np.max()
+        # distance_map_np = distance_map_np / feature_normalising_constant
+        distance_map_np = distance_map_np / distance_map_np.max()
 
         ## Goal Map
         goal = (int(random.uniform(rand_h, rand_h+img.shape[0])), int(random.uniform(rand_w, rand_w+img.shape[1])))
@@ -55,7 +59,7 @@ class SingleFolderDataset(Dataset):
         squared_dist = (xx - goal[1])**2 + (yy - goal[0])**2
         # 5. Take the square root to get the final Euclidean distance
         goal_map_np = np.sqrt(squared_dist)
-        # goal_map_np = goal_map_np / goal_map_np.max()
+        goal_map_np = goal_map_np / feature_normalising_constant
 
         final = np.stack([obstacle_map_np, distance_map_np, goal_map_np], axis=-1)
 
@@ -92,8 +96,8 @@ class SingleFolderDataset(Dataset):
 
             nodes.extend(filter(valid, new_nodes))
 
-        # heuristic_map = heuristic_map / heuristic_map.max()
-        heuristic_map = heuristic_map
+        heuristic_map = heuristic_map / label_normalising_constant
+        # heuristic_map = heuristic_map
 
         heuristic_mask = np.where(heuristic_map == 0, 0, 1)
         heuristic_mask[goal] = 1

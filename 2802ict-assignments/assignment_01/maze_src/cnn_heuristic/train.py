@@ -32,7 +32,7 @@ config: Any = run.config
 config.seed = 0
 config.batch_size = 32
 config.learning_rate = 1e-2
-config.epochs = 100
+config.epochs = 2
 
 rngs = nnx.Rngs(params=config.seed)
 
