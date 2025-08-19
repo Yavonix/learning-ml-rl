@@ -1,206 +1,174 @@
 import sys
 from dataclasses import dataclass, field
-from typing import Callable, Iterable, Literal
-from typing import TypeAlias
+from typing import Callable, Iterable
+import heapq
 
-Action: TypeAlias = Literal["u", "d", "l", "r"]
-State: TypeAlias = tuple[int, int]
+from common import (
+    DepthLimitReachedError,
+    NoSolutionError,
+    NoSolutionError,
+    Node,
+    State,
+    Maze_Common,
+    FrontierADT
+)
 
-@dataclass
-class Node:
-    state: State
-    parent: 'Node | None'
-    action: Action | None
-    depth: int = 0
+class StackFrontier(FrontierADT):
+    def __init__(self, initial_nodes: list[Node] | None = None):
+        if initial_nodes:
+            self.frontier = initial_nodes
+        else:
+            self.frontier = []
 
-    ## for the priority queue if two nodes have the same computed f cost
-    def __lt__(self, other: 'Node') -> bool:
-        return self.depth < other.depth
+    def __contains__(self, state) -> bool:
+        return any(node.state == state for node in self.frontier)
 
+    def empty(self):
+        return len(self.frontier) == 0
 
-class Maze_Common():
+    def add(self, node):
+        self.frontier.append(node)
 
-    def __init__(self, filename):
+    def extend(self, nodes):
+        self.frontier.extend(nodes)
 
-        # Read file and set height and width of maze
-        with open(filename) as f:
-            contents = f.read()
+    def remove(self, node):
+        """Remove node from frontier"""
+        self.frontier.remove(node)
 
-        # Validate start and goal
-        if contents.count("A") != 1:
-            raise Exception("maze must have exactly one start point")
-        if contents.count("B") != 1:
-            raise Exception("maze must have exactly one goal")
+    def pop(self):
+        """Pop next node from frontier"""
+        if self.empty():
+            raise Exception("empty frontier")
+        else:
+            return self.frontier.pop()
 
-        # Determine height and width of maze
-        contents = contents.splitlines()
-        self.height = len(contents)
-        self.width = max(len(line) for line in contents)
+    def size(self):
+        return len(self.frontier)
 
-        # Keep track of walls
-        self.walls = []
-        for i in range(self.height):
-            row = []
-            for j in range(self.width):
-                try:
-                    if contents[i][j] == "A":
-                        self.start = (i, j)
-                        row.append(False)
-                    elif contents[i][j] == "B":
-                        self.goal = (i, j)
-                        row.append(False)
-                    elif contents[i][j] == " ":
-                        row.append(False)
-                    else:
-                        row.append(True)
-                except IndexError:
-                    row.append(False)
-            self.walls.append(row)
-
-        self.solution: Node | None = None
-        self.explored: set[State] = set()
-
-    def reset_stats(self):
-        self.num_explored = 0
-        self.solution = None
-        self.explored = set()
-
-    def print(self):
-        actions, path = self.recover_path(self.solution) if self.solution is not None else [None, None]
-
-        cost = len(actions) if actions else 0
-
-        if actions: print(f"a. solution={''.join(actions)}")
-        else: print("a. no solution found")
-
-        print(f"b. cost={cost}")
-        print(f"c. path_length={cost}")
-        print(f"d. states_explored={self.num_explored}")
-        print(f"e. original_maze:")
-        self.print_maze(None)
-        print(f"f. visualised_path:")
-        self.print_maze(path)
-        print()
-
-    def print_maze(self, path: list[tuple[int,int]]|None):
-        for i, row in enumerate(self.walls):
-            for j, col in enumerate(row):
-                if col:
-                    print("█", end="")
-                elif (i, j) == self.start:
-                    print("A", end="")
-                elif (i, j) == self.goal:
-                    print("B", end="")
-                elif path is not None and (i, j) in path:
-                    print(f"{(path.index((i, j))+1)%10}", end="")
-                else:
-                    print(" ", end="")
-            print()
-
-    def neighbors(self, node: Node) -> Iterable[Node]:
-        row, col = node.state
-
-        candidates = [
-            Node((row - 1, col), node, "u", depth=node.depth+1),
-            Node((row + 1, col), node, "d", depth=node.depth+1),
-            Node((row, col - 1), node, "l", depth=node.depth+1),
-            Node((row, col + 1), node, "r", depth=node.depth+1),
-        ]
-
-        check: Callable[[Node], bool] = lambda c: (
-            self.walls is not None and
-            0 <= c.state[0] < self.height and
-            0 <= c.state[1] < self.width and
-            (not self.walls[c.state[0]][c.state[1]])
-        )
-
-        return filter(check, candidates)
-
-    def recover_path(self, node: Node) -> tuple[list[Action], list[tuple[int,int]]]:
-        actions: list[Action] = []
-        cells: list[tuple[int, int]] = []
-        while node.parent is not None:
-            if node.action: actions.append(node.action)
-            cells.append(node.state)
-            node = node.parent
-        actions.reverse()
-        cells.reverse()
-        return (actions, cells)
-
-    def output_image(self, filename, show_solution=True, show_explored=False):
-        from PIL import Image, ImageDraw
-        cell_size = 50
-        cell_border = 2
-
-        # Create a blank canvas
-        img = Image.new(
-            "RGBA",
-            (self.width * cell_size, self.height * cell_size),
-            "black"
-        )
-        draw = ImageDraw.Draw(img)
-
-        path = self.recover_path(self.solution)[1] if self.solution is not None else None
-        for i, row in enumerate(self.walls):
-            for j, col in enumerate(row):
-
-                # Walls
-                if col:
-                    fill = (40, 40, 40)
-
-                # Start
-                elif (i, j) == self.start:
-                    fill = (255, 0, 0)
-
-                # Goal
-                elif (i, j) == self.goal:
-                    fill = (0, 171, 28)
-
-                # Solution
-                elif path is not None and show_solution and (i, j) in path:
-                    fill = (220, 235, 113)
-
-                # Explored
-                elif path is not None and show_explored and self.explored and (i, j) in self.explored:
-                    fill = (212, 97, 85)
-
-                # Empty cell
-                else:
-                    fill = (237, 240, 252)
-
-                # Draw cell
-                draw.rectangle(
-                    ([(j * cell_size + cell_border, i * cell_size + cell_border),
-                      ((j + 1) * cell_size - cell_border, (i + 1) * cell_size - cell_border)]),
-                    fill=fill
-                )
-
-        img.save(filename)
-
-class NoSolutionError(Exception):
-    pass
-
-class DepthLimitReachedError(Exception):
-    pass
-
-class FrontierADT():
-    def __contains__(self, state: State) -> bool:
-        raise NotImplementedError
+class PriorityQueueFrontier(FrontierADT):
+    def __init__(self, cost_fn: Callable[[Node], int], initial_nodes: list[Node] | None = None):
+        self.frontier: list[tuple[int, Node]] = []
+        self.score = cost_fn
+        if initial_nodes:
+            for node in initial_nodes:
+                heapq.heappush(self.frontier, (self.score(node), node))
+    
+    def __contains__(self, state) -> bool:
+        return any(node.state == state for (priority, node) in self.frontier)
     
     def empty(self):
-        raise NotImplementedError
+        return len(self.frontier) == 0
     
-    def add(self, node: Node):
-        raise NotImplementedError
+    def add(self, node):
+        heapq.heappush(self.frontier, (self.score(node), node))
+
+    def extend(self, nodes):
+        for node in nodes:
+            heapq.heappush(self.frontier, (self.score(node), node))
+
+    def remove(self, node):
+        self.frontier.remove((self.score(node), node))
+        heapq.heapify(self.frontier)
+
+    def pop(self):
+        return heapq.heappop(self.frontier)[1]
     
-    def extend(self, nodes: list[Node] | Iterable[Node]):
-        raise NotImplementedError
+    def size(self):
+        return len(self.frontier)
+
+
+class Maze(Maze_Common):
+
+    def dfs_solve(self, max_depth=float("inf")) -> None:
+        """Depth-limited depth-first search"""
+
+        start_node = Node(state=self.start, parent=None, action=None, depth=0)
+        frontier = StackFrontier(initial_nodes=[start_node])
+
+        self.explored = set()
+
+        cutoff_occurred = False
+
+        while not frontier.empty():
+            node = frontier.pop()
+            self.num_explored += 1
+
+            if node.state == self.goal:
+                self.solution = node
+                return
+
+            self.explored.add(node.state)
+
+            for neighbour in self.neighbors(node):
+                if neighbour.depth > max_depth:
+                    cutoff_occurred = True
+                    continue
+                if neighbour.state not in self.explored and neighbour.state not in frontier:
+                    frontier.add(neighbour)
+
+        if cutoff_occurred:
+            raise DepthLimitReachedError
+        else:
+            raise NoSolutionError
+
+    def ids_solve(self) -> None:
+        """Iterative depth-first search"""
+
+        depth = 1
+        max_depth = 100
+
+        while depth <= max_depth:
+            try:
+                self.dfs_solve(max_depth=depth)
+                return
+            except DepthLimitReachedError:
+                depth += 1
+            except Exception as e:
+                raise e
+
+        raise DepthLimitReachedError
     
-    def remove(self, node: Node):
-        raise NotImplementedError
+    def manhattan_heuristic(self, node: Node) -> int:
+        return abs(self.goal[0]-node.state[0]) + abs(self.goal[1]-node.state[1])
     
-    def pop(self) -> Node:
-        raise NotImplementedError
-    
-    def size(self) -> int:
-        raise NotImplementedError
+    def astar_solve(self) -> None:
+        start_node = Node(state=self.start, parent=None, action=None, depth=0)
+        frontier = PriorityQueueFrontier(cost_fn=lambda n: n.depth + self.manhattan_heuristic(n), initial_nodes=[start_node]) # decides order
+        reached: dict[State, Node] = {start_node.state: start_node} # have I seen this state before, and was it via a better path?
+        explored: set[State] = set() # prevents reexpansion for consistent heuristic
+
+        while not frontier.empty():
+            node = frontier.pop()
+            self.num_explored += 1
+
+            explored.add(node.state)
+            
+            for neighbour in self.neighbors(node):
+                s = neighbour.state
+                if s not in explored and (s not in reached or neighbour.depth < reached[s].depth):
+                    if neighbour.state == self.goal:
+                        self.solution = neighbour
+                        return
+                    reached[s] = neighbour
+                    frontier.add(neighbour)
+
+
+if len(sys.argv) != 2:
+    sys.exit("Usage: python maze.py maze.txt")
+
+if __name__ == "__main__":
+
+    m = Maze(sys.argv[1])
+
+    m.reset_stats()
+    try:
+        m.astar_solve()
+    except NoSolutionError:
+        pass
+    except Exception as e:
+        raise e
+    m.print()
+
+    # print("Solution:\n\n")
+    # m.output_image("maze.png", show_explored=True)
