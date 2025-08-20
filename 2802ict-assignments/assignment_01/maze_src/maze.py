@@ -147,10 +147,10 @@ class Maze(Maze_Common):
                 raise e
 
         raise DepthLimitReachedError
-    
+
     def manhattan_heuristic(self, node: Node) -> int:
         return abs(self.goal[0]-node.state[0]) + abs(self.goal[1]-node.state[1])
-    
+
     def cnn_heuristic(self, node: Node) -> int:
         assert self.width == self.height == 224
 
