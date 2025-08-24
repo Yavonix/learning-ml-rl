@@ -1,3 +1,8 @@
+Minimum remaining values: choose the **variable** with the fewest choices
+Most constraining values: choose the **variable** with the most constraints
+Least constraining value: **given** a variable, choose the least constraining **assignment**
+Forward chaining: automatically update domains of neighbour variables
+
 1. ()
 MRV assessment: all nodes have the same domain. (no preference)
 DH assessment: SA has the most constrains, pick SA.
