@@ -69,7 +69,7 @@ class Maze_Common():
         self.explored = set()
         self.heuristic_cache = None
 
-    def print(self):
+    def print(self, skip_map_print:bool=False):
         actions, path = self.recover_path(self.solution) if self.solution is not None else [None, None]
 
         cost = len(actions) if actions else 0
@@ -81,9 +81,12 @@ class Maze_Common():
         print(f"c. path_length={cost}")
         print(f"d. states_explored={self.num_explored}")
         print(f"e. original_maze:")
-        self.print_maze(None)
+        if skip_map_print: print("skip_map_print active")
+        else: self.print_maze(None)
         print(f"f. visualised_path:")
-        self.print_maze(path)
+        if skip_map_print: print("skip_map_print active")
+        else: self.print_maze(path)
+
         print()
 
     def print_maze(self, path: list[tuple[int,int]]|None):
@@ -187,10 +190,7 @@ class NoSolutionError(Exception):
 class DepthLimitReachedError(Exception):
     pass
 
-class FrontierADT():
-    def __contains__(self, state: State) -> bool:
-        raise NotImplementedError
-    
+class FrontierADT():    
     def empty(self):
         raise NotImplementedError
     

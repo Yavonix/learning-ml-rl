@@ -8,9 +8,9 @@
             "name": "Python Debugger: Current File with Arguments",
             "type": "debugpy",
             "request": "launch",
-            "program": "${file}",
+            "program": "/home/roman/learning-ml/2802ict-assignments/assignment_01/maze_src/maze.py",
             "console": "integratedTerminal",
-            "args": "/home/roman/learning-ml/2802ict-assignments/assignment_01/maze_src/cnn_compatible_maps/6.txt"
+            "args": "/home/roman/learning-ml/2802ict-assignments/assignment_01/maze_src/maze${input:maze_number}.txt"
         },
         {
             "name": "Python Debugger: Crossword0",
@@ -39,5 +39,13 @@
             "cwd": "${fileDirname}",
             "args": "data/structure2.txt data/words2.txt"
         }
-    ]
+    ],
+    "inputs": [
+    {
+        "id": "maze_number",
+        "description": "Enter the maze number:",
+        "default": "1",
+        "type": "promptString"
+    }
+]
 }

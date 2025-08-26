@@ -35,9 +35,6 @@ class StackFrontier(FrontierADT):
         else:
             self.frontier = []
 
-    def __contains__(self, state) -> bool:
-        return any(node.state == state for node in self.frontier)
-
     def empty(self):
         return len(self.frontier) == 0
 
@@ -68,9 +65,6 @@ class PriorityQueueFrontier(FrontierADT):
         if initial_nodes:
             for node in initial_nodes:
                 heapq.heappush(self.frontier, (self.score(node), node))
-    
-    def __contains__(self, state) -> bool:
-        return any(node.state == state for (priority, node) in self.frontier)
     
     def empty(self):
         return len(self.frontier) == 0
@@ -105,8 +99,6 @@ class Maze(Maze_Common):
         start_node = Node(state=self.start, parent=None, action=None, depth=0)
         frontier = StackFrontier(initial_nodes=[start_node])
 
-        self.explored = set()
-
         cutoff_occurred = False
 
         while not frontier.empty():
@@ -117,13 +109,24 @@ class Maze(Maze_Common):
                 self.solution = node
                 return
 
-            self.explored.add(node.state)
+            # explored.add(node.state)
+            self.explored.add(node.state) # just for image rendering
+            print(f"exploring {node.state}")
 
             for neighbour in self.neighbors(node):
                 if neighbour.depth > max_depth:
                     cutoff_occurred = True
                     continue
-                if neighbour.state not in self.explored and neighbour.state not in frontier:
+
+                anc = node
+                in_ancestors = False
+                while anc is not None:
+                    if anc.state == neighbour.state:
+                        in_ancestors = True
+                        break
+                    anc = anc.parent
+
+                if not in_ancestors:
                     frontier.add(neighbour)
 
         if cutoff_occurred:
@@ -131,14 +134,14 @@ class Maze(Maze_Common):
         else:
             raise NoSolutionError
 
-    def ids_solve(self) -> None:
+    def ids_solve(self, max_depth:int = 10000) -> None:
         """Iterative depth-first search"""
 
         depth = 1
-        max_depth = 100
 
         while depth <= max_depth:
             try:
+                print(f"trying {depth}")
                 self.dfs_solve(max_depth=depth)
                 return
             except DepthLimitReachedError:
@@ -259,7 +262,7 @@ if __name__ == "__main__":
     m.reset_stats()
     try:
         # m.astar_solve()
-        m.astar_solve_consistent()
+        m.ids_solve()
     except NoSolutionError:
         pass
     except Exception as e:
