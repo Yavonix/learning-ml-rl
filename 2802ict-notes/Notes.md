@@ -39,6 +39,15 @@ Uninformed algorithms: Has no heuristic function.
   - In general, is the preferred uninformed search memory when search state space is larger than can fit into memory and solution depth is not known.
   - Expand the shallower frontier all the time
 
+
+DLS:              ancestor check only
+Tree DFS:         ancestor check only  
+Graph DFS:        explored set
+Tree BFS:         ancestor check only (never used)
+Graph BFS:        frontier + explored sets
+A* consistent:    frontier + explored sets
+A* inconsistent:  reached states dict with cost comparison
+
 Informed algorithms: Has a heuristic function.
 - Greedy search: uses priority queue. f(n) = h(n)
 - A*: uses priority queue. f(n) = g(n) + h(n)
