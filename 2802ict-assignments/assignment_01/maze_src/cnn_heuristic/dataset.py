@@ -7,8 +7,7 @@ import random
 from scipy.ndimage import distance_transform_edt
 from PIL import Image
 
-# FEATURE_NORMALISER = 316 # int((224**2 + 224**2)**0.5)
-# LABEL_NORMALISER = 500 # a number I pulled out of nowhere (really should be the max possible distance in the training dataset)
+# Not doing any normalising seemed to work so I just went with it
 
 FEATURE_NORMALISER = 1 # int((224**2 + 224**2)**0.5)
 LABEL_NORMALISER = 1 # a number I pulled out of nowhere (really should be the max possible distance in the training dataset)
@@ -17,10 +16,11 @@ NORMALISE_EUCLID_MAP = False
 # MAP_DIAGONAL = int((224**2 + 224**2)**0.5)       # 316
 # FEATURE_NORMALISER = MAP_DIAGONAL                # obstacle & goal distance
 # LABEL_NORMALISER = MAP_DIAGONAL                  # cost-to-go
-# NORMALISE_EUCLID_MAP = True                      # keep per-sample 0‒1 if you prefer
+# NORMALISE_EUCLID_MAP = True                      # keep per-sample 0‒1
 
 def generate_object_map(img: np.ndarray) -> np.ndarray:
-    """Accepts a HxW array where 1 represents obstacles and 0 represents free space"""
+    """Accepts a HxW array where 1 represents obstacles and 0 represents free space.
+    Resizes array to be 224x224 pixels."""
     # Feature Processing
     obstacle_map_np = np.ones((224,224))
     size_h = obstacle_map_np.shape[0] - img.shape[0]
@@ -148,8 +148,8 @@ class SingleFolderDataset(Dataset):
     
 
 def show_image(img: np.ndarray, title:str=""):
-    # img = np.concatenate(img, axis=0)
-    # img = img[:,:,0]
+    """Takes each channel and stacks them side by side to show in an image popup.
+    Usage of plotly should be preferred. (See `demo-model.ipynb`)"""
     
     if (len(img.shape) > 2):
         width = img.shape[1]

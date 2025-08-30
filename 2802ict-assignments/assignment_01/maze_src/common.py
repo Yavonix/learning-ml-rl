@@ -3,6 +3,8 @@ from dataclasses import dataclass, field
 from typing import Callable, Iterable, Literal
 from typing import TypeAlias, Any
 
+from IPython.display import display # to display images in jupyter
+
 Action: TypeAlias = Literal["u", "d", "l", "r"]
 State: TypeAlias = tuple[int, int]
 
@@ -134,7 +136,7 @@ class Maze_Common():
         cells.reverse()
         return (actions, cells)
 
-    def output_image(self, filename, show_solution=True, show_explored=False):
+    def output_image(self, filename="", show_solution=True, show_explored=False, jupyter_display=False):
         from PIL import Image, ImageDraw
         cell_size = 50
         cell_border = 2
@@ -182,7 +184,10 @@ class Maze_Common():
                     fill=fill
                 )
 
-        img.save(filename)
+        if not filename:
+            display(img)
+        else:
+            img.save(filename)
 
 class NoSolutionError(Exception):
     pass

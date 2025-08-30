@@ -1,6 +1,6 @@
 import sys
 from dataclasses import dataclass, field
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Any
 import heapq
 import time
 
@@ -28,7 +28,7 @@ from flax import nnx
 import orbax.checkpoint as ocp
 from jax import numpy as jnp
 import jax
-
+from pathlib import Path
 
 class StackFrontier(FrontierADT):
     def __init__(self, initial_nodes: list[Node] | None = None):
@@ -61,30 +61,29 @@ class StackFrontier(FrontierADT):
         return len(self.frontier)
 
 class PriorityQueueFrontier(FrontierADT):
-    def __init__(self, cost_fn: Callable[[Node], int], tie_breaker_fn: Callable[[Node], int], initial_nodes: list[Node] | None = None):
-        self.frontier: list[tuple[int,int,Node]] = []
+    def __init__(self, cost_fn: Callable[[Node], Any], initial_nodes: list[Node] | None = None):
+        self.frontier: list[tuple[Any,Node]] = []
         self.score = cost_fn
-        self.tie_breaker = tie_breaker_fn
         if initial_nodes:
             for node in initial_nodes:
-                heapq.heappush(self.frontier, (self.score(node), self.tie_breaker(node), node))
+                heapq.heappush(self.frontier, (self.score(node), node))
     
     def empty(self):
         return len(self.frontier) == 0
     
     def add(self, node):
-        heapq.heappush(self.frontier, (self.score(node), self.tie_breaker(node), node))
+        heapq.heappush(self.frontier, (self.score(node), node))
 
     def extend(self, nodes):
         for node in nodes:
-            heapq.heappush(self.frontier, (self.score(node), self.tie_breaker(node), node))
+            heapq.heappush(self.frontier, (self.score(node), node))
 
     def remove(self, node):
-        self.frontier = [t for t in self.frontier if t[2] is not node]
+        self.frontier = [t for t in self.frontier if t[1] is not node]
         heapq.heapify(self.frontier)
 
     def pop(self):
-        return heapq.heappop(self.frontier)[2]
+        return heapq.heappop(self.frontier)[1]
     
     def size(self):
         return len(self.frontier)
@@ -101,7 +100,6 @@ class Maze(Maze_Common):
 
         start_node = Node(state=self.start, parent=None, action=None, depth=0)
         frontier = StackFrontier(initial_nodes=[start_node])
-
         cutoff_occurred = False
 
         while not frontier.empty():
@@ -112,9 +110,7 @@ class Maze(Maze_Common):
                 self.solution = node
                 return
 
-            # explored.add(node.state)
             self.explored.add(node.state) # just for image rendering
-            # print(f"exploring {node.state}")
 
             for neighbour in self.neighbors(node):
                 if neighbour.depth > max_depth:
@@ -156,13 +152,15 @@ class Maze(Maze_Common):
 
     
     
-    def load_model(self):
+    def load_model(self, heuristic_weighting=10):
+        """Load the CNN into memory"""
         checkpointer = ocp.StandardCheckpointer()
-        checkpoint_dir = "/home/roman/learning-ml/2802ict-assignments/assignment_01/maze_src/cnn_heuristic/checkpoints/save-no-normalisation-2100"
+        checkpoint_dir = "./cnn_heuristic/checkpoints/save-no-normalisation-2100"
+        full_checkpoint_path = Path(checkpoint_dir).resolve()
 
         abstract_model: Encoder_Decoder = nnx.eval_shape(lambda: Encoder_Decoder(nnx.Rngs(0)))
         graphdef, abstract_state = nnx.split(abstract_model)
-        restored_state = checkpointer.restore(checkpoint_dir, abstract_state)
+        restored_state = checkpointer.restore(full_checkpoint_path, abstract_state)
         model = nnx.merge(graphdef, restored_state)
         model.eval() # recursively sets deterministic=True and use_running_average=True
 
@@ -174,6 +172,8 @@ class Maze(Maze_Common):
 
         # We run the model once with an empty input to trigger jax JIT compilation
         self.cnn_apply(jnp.zeros((224,224,3)))
+
+        self.heuristic_weighting = heuristic_weighting
     
     def manhattan_heuristic(self, node: Node) -> int:
         return abs(self.goal[0]-node.state[0]) + abs(self.goal[1]-node.state[1])
@@ -187,7 +187,7 @@ class Maze(Maze_Common):
             obstacle_map_np = convert_bool_to_obstacle_map(self.walls)
             distance_map_np = generate_euclid_transform_map(obstacle_map_np)
             # goal = gen_random_goal(obstacle_map_np)
-            print(f"using goal {self.goal}")
+            print(f"Using goal {self.goal}")
             goal_map_np = generate_goal_map(obstacle_map_np, self.goal)
 
             final = np.stack([obstacle_map_np, distance_map_np, goal_map_np], axis=-1)
@@ -198,12 +198,13 @@ class Maze(Maze_Common):
 
         # print(f"{node.state[0], node.state[1]} {self.heuristic_cache[node.state[0], node.state[1]] * LABEL_NORMALISER}")
 
-        return self.heuristic_cache[node.state[0], node.state[1]]
+        # technically a weighted A* search because of the * 10
+        return self.heuristic_cache[node.state[0], node.state[1]] * LABEL_NORMALISER * self.heuristic_weighting
 
 
     def astar_solve_consistent(self) -> None:
         start_node = Node(state=self.start, parent=None, action=None, depth=0)
-        frontier = PriorityQueueFrontier(cost_fn=lambda n: n.depth + self.manhattan_heuristic(n), tie_breaker_fn=lambda n:-n.depth, initial_nodes=[start_node]) # decides order
+        frontier = PriorityQueueFrontier(cost_fn=lambda n: (n.depth + self.manhattan_heuristic(n),-n.depth), initial_nodes=[start_node]) # decides order
         reached: dict[State, Node] = {start_node.state: start_node} # have I seen this state before, and was it via a better path?
         explored: set[State] = set() # prevents reexpansion for consistent heuristic
 
@@ -211,29 +212,23 @@ class Maze(Maze_Common):
             node = frontier.pop()
             self.num_explored += 1
 
-            # if (self.num_explored % 100 == 0): self.output_image("progress-2.png", show_explored=True, show_solution=False)
             self.explored.add(node.state) # just for the image rendering
             explored.add(node.state)
-
-            # if (self.num_explored % 500 == 0): 
-            #     self.output_image("progress-1.png", show_explored=True, show_solution=False)
-
             
             for neighbour in self.neighbors(node):
                 s = neighbour.state
                 if s not in explored and (s not in reached or neighbour.depth < reached[s].depth):
                     if neighbour.state == self.goal:
                         self.solution = neighbour
-                        self.output_image("progress-1.png", show_explored=True, show_solution=True)
                         return
                     reached[s] = neighbour
                     frontier.add(neighbour)
 
     def astar_solve(self) -> None:
         start_node = Node(state=self.start, parent=None, action=None, depth=0)
-        heuristic_fn = lambda n: n.depth + self.cnn_heuristic(n)
+        heuristic_fn = lambda n: (n.depth + self.cnn_heuristic(n), -n.depth)
         # heuristic_fn:Callable[[Node], int] = lambda n: n.depth + self.manhattan_heuristic(n)
-        frontier = PriorityQueueFrontier(cost_fn=heuristic_fn, tie_breaker_fn=lambda n:-n.depth, initial_nodes=[start_node]) # decides order
+        frontier = PriorityQueueFrontier(cost_fn=heuristic_fn, initial_nodes=[start_node]) # decides order
         reached: dict[State, Node] = {start_node.state: start_node} # have I seen this state before, and was it via a better path?
 
         solution:Node|None = None
@@ -243,10 +238,6 @@ class Maze(Maze_Common):
             self.num_explored += 1
 
             self.explored.add(node.state) # just for the image rendering
-            # if (self.num_explored % 1000 == 0):
-            #     print(self.num_explored)
-            # if (self.num_explored % 500 == 0): 
-            #     self.output_image("progress-2.png", show_explored=True, show_solution=False)
 
             if node.state == self.goal:
                 if not solution or node.depth < solution.depth:
@@ -254,7 +245,6 @@ class Maze(Maze_Common):
             
             if solution and frontier.is_best(solution):
                 self.solution=solution
-                # self.output_image("progress-2.png", show_explored=True, show_solution=True)
                 return
             
             for neighbour in self.neighbors(node):

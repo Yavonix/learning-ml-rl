@@ -5,12 +5,12 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: Current File with Arguments",
+            "name": "Python Debugger: Run Maze",
             "type": "debugpy",
             "request": "launch",
             "program": "/home/roman/learning-ml/2802ict-assignments/assignment_01/maze_src/maze.py",
             "console": "integratedTerminal",
-            "args": "/home/roman/learning-ml/2802ict-assignments/assignment_01/maze_src/maze${input:maze_number}.txt"
+            "args": "/home/roman/learning-ml/2802ict-assignments/assignment_01/maze_src/test_maps/${input:selected_maze}.txt"
         },
         {
             "name": "Python Debugger: Crossword0",
@@ -42,10 +42,25 @@
     ],
     "inputs": [
     {
-        "id": "maze_number",
-        "description": "Enter the maze number:",
-        "default": "1",
-        "type": "promptString"
+        "id": "selected_maze",
+        "description": "Enter maze to execute:",
+        "default": "norm_1",
+        "type": "pickString",
+        "options": [
+            "norm_1",
+            "norm_2",
+            "norm_3",
+            "cnn_0",
+            "cnn_1",
+            "cnn_2",
+            "cnn_3",
+            "cnn_4",
+            "cnn_5",
+            "cnn_6",
+            "cnn_7",
+            "cnn_8",
+            "cnn_9",
+        ]
     }
 ]
 }
