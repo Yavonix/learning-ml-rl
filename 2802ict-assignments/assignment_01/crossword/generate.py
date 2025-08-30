@@ -2,8 +2,11 @@ import copy
 from functools import reduce
 from itertools import product
 import sys
+from typing import Callable
+from IPython.display import display
 
 from crossword import *
+from crossword_partly_filled import CrosswordPartlyFilled
 
 
 class CrosswordCreator():
@@ -47,7 +50,7 @@ class CrosswordCreator():
                     print("█", end="")
             print()
 
-    def save(self, assignment, filename):
+    def save(self, assignment, filename=""):
         """
         Save crossword assignment to an image file.
         """
@@ -85,8 +88,10 @@ class CrosswordCreator():
                              rect[0][1] + ((interior_size - h) / 2) - 10),
                             letters[i][j], fill="black", font=font # type: ignore
                         )
-
-        img.save(filename)
+        if filename:
+            img.save(filename)
+        else:
+            display(img)
 
     def solve(self):
         """
@@ -105,8 +110,13 @@ class CrosswordCreator():
          constraints; in this case, the length of the word.)
         """
 
+        ## We check for two unary constraints:
+        ##   1. That length is correct
+        ##   2. That the variable fits any prefilled characters (for the special features/extensions part of the assignment)
+        is_valid: Callable[[str,str],bool] = lambda candidate, mask: len(candidate) == len(mask) and all(c == m or m == '_' for c, m in zip(candidate.lower(), mask.lower()))
+
         self.domains = {
-            variable: {k for k in domain if len(k) == variable.length}
+            variable: {k for k in domain if is_valid(k, variable.mask)}
             for variable, domain in self.domains.items()
         }
 
@@ -161,21 +171,6 @@ class CrosswordCreator():
 
         return True
     
-    # def ac3(self, arcs: list[tuple[Variable, Variable]] | None = None) -> bool:
-    #     if not arcs: arcs = list(self.crossword.overlaps)
-    #     in_queue = set(arcs)
-    #     while arcs:
-    #         arc = arcs.pop(0)
-    #         in_queue.remove(arc)
-    #         if self.revise(arc[0], arc[1]):
-    #             if len(self.domains[arc[0]]) == 0: return False # all remaining nodes gone
-    #             for neighbour in self.crossword.neighbors(arc[0]):
-    #                 new_edge = (neighbour, arc[0])
-    #                 if new_edge not in in_queue: 
-    #                     arcs.append(new_edge)
-    #                     in_queue.add(new_edge)
-    #     return True
-
     def assignment_complete(self, assignment: dict[Variable, str]) -> bool:
         """
         Return True if `assignment` is complete (i.e., assigns a value to each
@@ -300,7 +295,7 @@ def main():
     output = sys.argv[3] if len(sys.argv) == 4 else None
 
     # Generate crossword
-    crossword = Crossword(structure, words)
+    crossword = CrosswordPartlyFilled(structure, words)
     creator = CrosswordCreator(crossword)
     assignment = creator.solve()
 

@@ -4,6 +4,7 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": "Python Debugger: Run Maze",
             "type": "debugpy",
@@ -13,32 +14,23 @@
             "args": "/home/roman/learning-ml/2802ict-assignments/assignment_01/maze_src/test_maps/${input:selected_maze}.txt"
         },
         {
-            "name": "Python Debugger: Crossword0",
+            "name": "Python Debugger: Run Crossword",
             "type": "debugpy",
             "request": "launch",
-            "program": "${file}",
+            "program": "/home/roman/learning-ml/2802ict-assignments/assignment_01/crossword/generate.py",
             "console": "integratedTerminal",
             "cwd": "${fileDirname}",
-            "args": "data/structure0.txt data/words0.txt"
+            "args": "data/${input:selected_structure}.txt data/${input:selected_words}.txt"
         },
         {
-            "name": "Python Debugger: Crossword1",
+            "name": "Python Debugger: Current File",
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
             "cwd": "${fileDirname}",
-            "args": "data/structure1.txt data/words1.txt"
+            "args": ""
         },
-        {
-            "name": "Python Debugger: Crossword2",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${file}",
-            "console": "integratedTerminal",
-            "cwd": "${fileDirname}",
-            "args": "data/structure2.txt data/words2.txt"
-        }
     ],
     "inputs": [
     {
@@ -60,6 +52,29 @@
             "cnn_7",
             "cnn_8",
             "cnn_9",
+        ]
+    },
+    {
+        "id": "selected_structure",
+        "description": "Enter structure file to use:",
+        "default": "structure0",
+        "type": "pickString",
+        "options": [
+            "structure0",
+            "structure1",
+            "structure2",
+            "structure2_partly_filled",
+        ]
+    },
+    {
+        "id": "selected_words",
+        "description": "Enter words file to use:",
+        "default": "words0",
+        "type": "pickString",
+        "options": [
+            "words0",
+            "words1",
+            "words2",
         ]
     }
 ]

@@ -1,48 +1,16 @@
+## The assignment task sheet said not to modify the original crossword file but
+## for my something special I wanted to add some additional unary constraints so
+## I thought the best way to deal with that would be to create a copy.
+
+## This Crossword is very similar to the original but supports partly solved crosswords
+
 from typing import Literal
+from pathlib import Path
+
+from crossword import Variable, Crossword
 
 
-class Variable():
-
-    ACROSS = "across"
-    DOWN = "down"
-
-    def __init__(self, i: int, j: int, direction: Literal["across", "down"], length: int, mask:str=""):
-        """Create a new variable with starting point, direction, and length."""
-        self.i = i
-        self.j = j
-        self.direction = direction
-        self.length = length
-        self.cells = []
-        for k in range(self.length):
-            self.cells.append(
-                (self.i + (k if self.direction == Variable.DOWN else 0),
-                 self.j + (k if self.direction == Variable.ACROSS else 0))
-            )
-        if mask:
-            self.mask = mask
-        else:
-            self.mask = "_"*self.length
-
-    def __hash__(self):
-        return hash((self.i, self.j, self.direction, self.length))
-
-    def __eq__(self, other):
-        return (
-            (self.i == other.i) and
-            (self.j == other.j) and
-            (self.direction == other.direction) and
-            (self.length == other.length)
-        )
-
-    def __str__(self):
-        return f"({self.i}, {self.j}) {self.direction} : {self.length}"
-
-    def __repr__(self):
-        direction = repr(self.direction)
-        return f"Variable({self.i}, {self.j}, {direction}, {self.length})"
-
-
-class Crossword():
+class CrosswordPartlyFilled(Crossword):
 
     def __init__(self, structure_file, words_file):
 
@@ -58,7 +26,7 @@ class Crossword():
                 for j in range(self.width):
                     if j >= len(contents[i]):
                         row.append(False)
-                    elif contents[i][j] == "_":
+                    elif contents[i][j] == "_" or contents[i][j].isalpha():
                         row.append(True)
                     else:
                         row.append(False)
@@ -86,10 +54,12 @@ class Crossword():
                         else:
                             break
                     if length > 1:
+                        mask = "".join([contents[k][j] for k in range(i, i+length)])
                         self.variables.add(Variable(
                             i=i, j=j,
                             direction=Variable.DOWN,
-                            length=length
+                            length=length,
+                            mask=mask
                         ))
 
                 # Horizontal words
@@ -105,10 +75,12 @@ class Crossword():
                         else:
                             break
                     if length > 1:
+                        mask = "".join([contents[i][k] for k in range(j, j+length)])
                         self.variables.add(Variable(
                             i=i, j=j,
                             direction=Variable.ACROSS,
-                            length=length
+                            length=length,
+                            mask=mask
                         ))
 
         # Compute overlaps for each word
@@ -138,3 +110,8 @@ class Crossword():
             v for v in self.variables
             if v != var and self.overlaps[v, var]
         )
+
+if __name__ == "__main__":
+    structure = Path("./data/structure2_partly_filled.txt")
+    words = Path("./data/words2.txt")
+    crossword = CrosswordPartlyFilled(structure, words)
