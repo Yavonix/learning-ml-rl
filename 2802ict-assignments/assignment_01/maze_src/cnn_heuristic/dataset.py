@@ -21,23 +21,21 @@ NORMALISE_EUCLID_MAP = False
 def generate_object_map(img: np.ndarray) -> np.ndarray:
     """Accepts a HxW array where 1 represents obstacles and 0 represents free space.
     Resizes array to be 224x224 pixels."""
-    # Feature Processing
-    obstacle_map_np = np.ones((224,224))
+
+    obstacle_map_np = np.ones((224,224)) # use a wall background
     size_h = obstacle_map_np.shape[0] - img.shape[0]
     size_w = obstacle_map_np.shape[1] - img.shape[1]
 
     rand_h = int(random.uniform(0, size_h))
     rand_w = int(random.uniform(0, size_w))
 
-    ## Obstacle Map
-    obstacle_map_np[rand_h:rand_h+img.shape[0], rand_w:rand_w+img.shape[1]] = img
+    obstacle_map_np[rand_h:rand_h+img.shape[0], rand_w:rand_w+img.shape[1]] = img # overlay the map
 
     return obstacle_map_np
 
 def generate_euclid_transform_map(obstacle_map: np.ndarray) -> np.ndarray:
     # euclidian distance transform
     distance_map_np = np.array(distance_transform_edt(1 - obstacle_map))
-    # distance_map_np = distance_map_np / feature_normalising_constant
     if NORMALISE_EUCLID_MAP:
         distance_map_np = distance_map_np / distance_map_np.max()
     return distance_map_np
@@ -45,7 +43,6 @@ def generate_euclid_transform_map(obstacle_map: np.ndarray) -> np.ndarray:
 def gen_random_goal(obstacle_map_np: np.ndarray):
     gen_goal = lambda: (int(random.uniform(0, obstacle_map_np.shape[0])), int(random.uniform(0, obstacle_map_np.shape[1])))
     goal = gen_goal()
-
     # make sure goal is not obstacle
     while obstacle_map_np[goal[0], goal[1]] == 1:
         goal = gen_goal()
@@ -57,13 +54,14 @@ def generate_goal_map(obstacle_map_np: np.ndarray, goal: tuple[int,int]) -> np.n
     x_coords = np.arange(obstacle_map_np.shape[1])
     xx, yy = np.meshgrid(x_coords, y_coords)
     squared_dist = (xx - goal[1])**2 + (yy - goal[0])**2
-    # 5. Take the square root to get the final Euclidean distance
+    # take the square root to get the final Euclidean distance
     goal_map_np = np.sqrt(squared_dist)
     goal_map_np = goal_map_np / FEATURE_NORMALISER
 
     return goal_map_np
 
 def generate_label_map(obstacle_map_np: np.ndarray, goal: tuple[int,int]) -> np.ndarray:
+    """Super simple BFS to generate a label given the map and a goal"""
     heuristic_map = np.full_like(obstacle_map_np, 0)
 
     starting_node = (*goal, 0)
@@ -82,7 +80,6 @@ def generate_label_map(obstacle_map_np: np.ndarray, goal: tuple[int,int]) -> np.
                                                 (cur_node[0]-1, cur_node[1], cur_node[2]+1),
                                                 (cur_node[0], cur_node[1]+1, cur_node[2]+1),
                                                 (cur_node[0], cur_node[1]-1, cur_node[2]+1)]
-        
 
         def valid(node: tuple[int,int,int]):
             loc = node[0:2]
@@ -100,7 +97,7 @@ def generate_label_map(obstacle_map_np: np.ndarray, goal: tuple[int,int]) -> np.
     return heuristic_map
 
 def convert_bool_to_obstacle_map(map: list[list[bool]]) -> np.ndarray:
-    """convert from map of bools to numpy map of 0 and 1"""
+    """Convert from map of booleans to numpy map of 0 and 1"""
 
     base = np.zeros((len(map), len(map[0])))
 
@@ -145,7 +142,6 @@ class SingleFolderDataset(Dataset):
         # heuristic_map = heuristic_map / heuristic_map.max()
         
         return final, final_label  # dummy label 0
-    
 
 def show_image(img: np.ndarray, title:str=""):
     """Takes each channel and stacks them side by side to show in an image popup.

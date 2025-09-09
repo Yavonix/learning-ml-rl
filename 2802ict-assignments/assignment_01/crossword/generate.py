@@ -1,4 +1,3 @@
-import copy
 from functools import reduce
 from itertools import product
 import sys
@@ -7,7 +6,6 @@ from IPython.display import display
 
 from crossword import *
 from crossword_partly_filled import CrosswordPartlyFilled
-
 
 class CrosswordCreator():
 
@@ -98,8 +96,6 @@ class CrosswordCreator():
         Enforce node and arc consistency, and then solve the CSP.
         """
         self.enforce_node_consistency()
-        # k = next(iter(self.domains))
-        # [self.revise(i,k) for i in self.domains]
         self.ac3()
         return self.backtrack(dict())
 
@@ -160,7 +156,7 @@ class CrosswordCreator():
         Return True if arc consistency is enforced and no domains are empty;
         return False if one or more domains end up empty.
         """
-        
+
         if not arcs: arcs = [(x, y) for (x, y), o in self.crossword.overlaps.items() if o]
 
         while arcs:
@@ -176,10 +172,9 @@ class CrosswordCreator():
         Return True if `assignment` is complete (i.e., assigns a value to each
         crossword variable); return False otherwise.
         """
-        # all(assignment.values())
+
         return len(assignment) == len(self.crossword.variables)
 
-    # Q: does this have all the appropriate consistency checks?
     def consistent(self, assignment: dict[Variable, str]) -> bool:
         """
         Return True if `assignment` is consistent (i.e., words fit in crossword
@@ -212,9 +207,13 @@ class CrosswordCreator():
         """
 
         neighbours = self.crossword.neighbors(var)
+
+        # we only need to check neighbours that do not yet have assignments
+        unassigned_neighbours = neighbours - set(assignment.keys())
+
         ranking: dict[str, int] = {value: 0 for value in self.domains[var]}
 
-        for neighbour in neighbours:
+        for neighbour in unassigned_neighbours:
             constraint = self.crossword.overlaps[(var, neighbour)]
             if not constraint: continue
             for (value, neighbour_value) in product(self.domains[var], self.domains[neighbour]):
@@ -223,24 +222,6 @@ class CrosswordCreator():
         ordered_ranking = sorted(ranking, key=lambda k: ranking[k])
 
         return ordered_ranking
-
-        # relevant_overlaps = [
-        #     (key, value)
-        #     for key, value in self.crossword.overlaps.items()
-        #     if key[0] == var and value is not None
-        # ]
-        
-        # ranking: dict[str, int] = {}
-        # for value in self.domains[var]:
-        #     choices_eliminated = 0
-        #     for ((_, neighbour), constraint) in relevant_overlaps:
-        #         for neighbour_value in self.domains[neighbour]:
-        #             if value[constraint[0]] != neighbour_value[constraint[1]]: choices_eliminated += 1
-        #     ranking[value] = choices_eliminated
-
-        # ordered_ranking = sorted(ranking, key=lambda k: ranking[k])
-
-        # return ordered_ranking
 
     def select_unassigned_variable(self, assignment: dict[Variable, str]) -> Variable:
         """
@@ -251,11 +232,15 @@ class CrosswordCreator():
         return values.
         """
 
+        # Uses 2 heuristics for variable selection:
+        ## Minimum remaining values: choose the variable with the fewest choices
+        ## Most costraining values: choose the variable with the most constraints
+
         unassigned = self.crossword.variables - set(assignment.keys())
 
         def composite_key(var: Variable) -> tuple[int, int]:
-            key1 = len(self.domains[var])
-            key2 = -len(self.crossword.neighbors(var))
+            key1 = len(self.domains[var]) # Minimum remaining values: choose the variable with the fewest choices
+            key2 = -len(self.crossword.neighbors(var)) # Most costraining values: choose the variable with the most constraints
             return (key1, key2)
 
         return min(unassigned, key=composite_key)

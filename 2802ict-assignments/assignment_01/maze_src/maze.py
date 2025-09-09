@@ -1,8 +1,6 @@
 import sys
-from dataclasses import dataclass, field
-from typing import Callable, Iterable, Any
+from typing import Callable, Any
 import heapq
-import time
 
 from common import (
     DepthLimitReachedError,
@@ -14,6 +12,10 @@ from common import (
     FrontierADT
 )
 
+# Stuff for the CNN heuristic
+# jax is a python library for accelerated linear algebra
+# flax is a jax library for implementing neural network models
+# orbax is a model checkpointing library
 import numpy as np
 from cnn_heuristic.dataset import (
     generate_object_map, 
@@ -179,7 +181,7 @@ class Maze(Maze_Common):
         return abs(self.goal[0]-node.state[0]) + abs(self.goal[1]-node.state[1])
 
     def cnn_heuristic(self, node: Node) -> int:
-        assert self.width == self.height == 224
+        assert self.width == self.height == 224, "please use the cnn_heuristic only on maps of 224 x 224 pixels"
 
         if self.heuristic_cache is None:
             print("Generating heuristic map...")
@@ -203,6 +205,8 @@ class Maze(Maze_Common):
 
 
     def astar_solve_consistent(self) -> None:
+        """A variant of A* with early goal checking and an explored set."""
+
         start_node = Node(state=self.start, parent=None, action=None, depth=0)
         frontier = PriorityQueueFrontier(cost_fn=lambda n: (n.depth + self.manhattan_heuristic(n),-n.depth), initial_nodes=[start_node]) # decides order
         reached: dict[State, Node] = {start_node.state: start_node} # have I seen this state before, and was it via a better path?
@@ -218,6 +222,7 @@ class Maze(Maze_Common):
             for neighbour in self.neighbors(node):
                 s = neighbour.state
                 if s not in explored and (s not in reached or neighbour.depth < reached[s].depth):
+                    # Because we are using the Manhattan heuristic, early goal checks are fine
                     if neighbour.state == self.goal:
                         self.solution = neighbour
                         return
@@ -225,10 +230,11 @@ class Maze(Maze_Common):
                     frontier.add(neighbour)
 
     def astar_solve(self) -> None:
+        """Standard A* search"""
         start_node = Node(state=self.start, parent=None, action=None, depth=0)
-        heuristic_fn = lambda n: (n.depth + self.cnn_heuristic(n), -n.depth)
-        # heuristic_fn:Callable[[Node], int] = lambda n: n.depth + self.manhattan_heuristic(n)
-        frontier = PriorityQueueFrontier(cost_fn=heuristic_fn, initial_nodes=[start_node]) # decides order
+        heuristic_fn:Callable[[Node], Any] = lambda n: (n.depth + self.cnn_heuristic(n), -n.depth)
+        # heuristic_fn:Callable[[Node], Any] = lambda n: n.depth + self.manhattan_heuristic(n)
+        frontier = PriorityQueueFrontier(cost_fn=heuristic_fn, initial_nodes=[start_node])
         reached: dict[State, Node] = {start_node.state: start_node} # have I seen this state before, and was it via a better path?
 
         solution:Node|None = None
@@ -236,7 +242,6 @@ class Maze(Maze_Common):
         while not frontier.empty():
             node = frontier.pop()
             self.num_explored += 1
-
             self.explored.add(node.state) # just for the image rendering
 
             if node.state == self.goal:
@@ -252,7 +257,6 @@ class Maze(Maze_Common):
                 if s not in reached or neighbour.depth < reached[s].depth:
                     reached[s] = neighbour
                     frontier.add(neighbour)
-
 
 if len(sys.argv) != 2:
     sys.exit("Usage: python maze.py maze.txt")

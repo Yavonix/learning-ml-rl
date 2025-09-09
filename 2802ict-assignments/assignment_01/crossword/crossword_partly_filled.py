@@ -9,7 +9,6 @@ from pathlib import Path
 
 from crossword import Variable, Crossword
 
-
 class CrosswordPartlyFilled(Crossword):
 
     def __init__(self, structure_file, words_file):

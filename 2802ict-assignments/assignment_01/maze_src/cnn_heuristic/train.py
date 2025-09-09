@@ -119,25 +119,4 @@ for i in range(config.epochs):
             checkpointer.wait_until_finished()
         print(f"saved checkpoint: {save_path}")
 
-# lets log some images and our classifications:
-
-
-
-
-# X, y = next(iter(dl_train))
-
-# y_pred = model(X)
-
-# show_image(X[0])
-# show_image(y_pred[0])
-
-# X = np.squeeze(X, -1)
-
-# y_pred = nnx.softmax(y_pred, axis=-1)
-# y_pred = y_pred.argmax(axis=-1)
-# images = [Image.fromarray(image*255).convert("L") for image in X]
-# labels = y_pred
-
-# wandb.log({"examples": [wandb.Image(image, caption=label) for (image, label) in zip(images, labels)]})
-
 run.finish()
