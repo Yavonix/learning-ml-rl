@@ -272,7 +272,7 @@ Types of machine learning:
     - PCA: Linear transform that finds orthogonal directions (principal components) that maximise variance (extract the directions of greatest variance, which is very useful for feature extraction, denoising and compression)
     - ICA: Linear transform that finds components that are statistically independent. (separate mixed sources (blind source separation))
   - Association (rule) learning (wikipedia classifies this as supervised learning)
-    - $X\impl Y$
+    - $X\implies Y$
     - Every rule is composed by two different sets of items, also known as itemsets, X and Y, where X is called antecedent or left-hand-side (LHS) and Y consequent or right-hand-side (RHS)
 - Reinforcement learning (learn sequence of actions to maximise payoff)
   - Algorithm/agent interacts with the environment and gets a positive/negative reward

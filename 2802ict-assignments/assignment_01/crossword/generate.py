@@ -234,13 +234,13 @@ class CrosswordCreator():
 
         # Uses 2 heuristics for variable selection:
         ## Minimum remaining values: choose the variable with the fewest choices
-        ## Most costraining values: choose the variable with the most constraints
+        ## Most costraining variable: choose the variable with the most constraints
 
         unassigned = self.crossword.variables - set(assignment.keys())
 
         def composite_key(var: Variable) -> tuple[int, int]:
             key1 = len(self.domains[var]) # Minimum remaining values: choose the variable with the fewest choices
-            key2 = -len(self.crossword.neighbors(var)) # Most costraining values: choose the variable with the most constraints
+            key2 = -len(self.crossword.neighbors(var)) # Most costraining variable: choose the variable with the most constraints
             return (key1, key2)
 
         return min(unassigned, key=composite_key)
