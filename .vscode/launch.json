@@ -23,6 +23,15 @@
             "args": "data/${input:selected_structure}.txt data/${input:selected_words}.txt"
         },
         {
+            "name": "Python Debugger: Run NN",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "/home/roman/learning-ml/2802ict-assignments/assignment_02/nn/nn.py",
+            "console": "integratedTerminal",
+            "cwd": "${fileDirname}",
+            "args": "784 30 10 /home/roman/learning-ml/2802ict-assignments/assignment_02/nn/fashion-mnist_train.csv.gz /home/roman/learning-ml/2802ict-assignments/assignment_02/nn/fashion-mnist_test.csv.gz"
+        },
+        {
             "name": "Python Debugger: Current File",
             "type": "debugpy",
             "request": "launch",
