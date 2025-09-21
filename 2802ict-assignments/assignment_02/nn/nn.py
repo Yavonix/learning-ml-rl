@@ -68,7 +68,8 @@ def train(batch: tuple[np.ndarray, np.ndarray], m: Model, lr: float) -> tuple[Mo
     grad_B2 = Delta_2.mean(axis=0)
     
     # backprop layer 1
-    Delta_1 = (Delta_2 @ m.W_2) * sigmoid(Z_1) * (1 - sigmoid(Z_1))
+    S_1 = sigmoid(Z_1)
+    Delta_1 = (Delta_2 @ m.W_2) * S_1 * (1 - S_1)
     grad_W1 = (Delta_1.T @ X) / n_examples
     grad_B1 = Delta_1.mean(axis=0)
 
@@ -101,7 +102,3 @@ if __name__ == "__main__":
         for mb in batch(d_train, 32):
             model, loss = train(mb, model, lr)
         print(loss)
-
-    # print(train[0].shape)
-
-    
