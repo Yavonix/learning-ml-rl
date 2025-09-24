@@ -1,7 +1,7 @@
 import numpy as np
 import sys
 from typing import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
@@ -32,6 +32,41 @@ class Model:
     W_2: np.ndarray
     B_2: np.ndarray
 
+@dataclass
+class RunningAverage:
+    value: float = 0.0
+    count: int = 0
+
+    def update(self, new_value):
+        self.value = (self.value * self.count + new_value)/(self.count+1)
+        self.count += 1
+    def reset(self):
+        self.value = 0.0
+        self.count = 0
+
+@dataclass
+class ModelMetrics:
+    loss: RunningAverage = field(default_factory=RunningAverage)
+    accuracy: RunningAverage = field(default_factory=RunningAverage)
+
+    def update(self, y: np.ndarray, y_hat: np.ndarray):
+        # loss
+        L = y * y_hat
+        L = L.sum(axis=1)
+        L = -np.log(L)
+        L = L.mean()
+        self.loss.update(L)
+
+        # accuracy
+        pred = y_hat.argmax(axis=1)
+        true = y.argmax(axis=1)
+        accuracy = (pred == true).mean()
+        self.accuracy.update(accuracy)
+
+    def reset(self):
+        self.loss.reset()
+        self.accuracy.reset()
+
 def init_model(n_input, n_hidden, n_output) -> Model:
     W_1 = np.random.normal(0, 0.01, (n_hidden, n_input))
     B_1 = np.random.normal(0, 0.01, n_hidden)
@@ -39,7 +74,7 @@ def init_model(n_input, n_hidden, n_output) -> Model:
     B_2 = np.random.normal(0, 0.01, n_output)
     return Model(W_1, B_1, W_2, B_2)
 
-def train(batch: tuple[np.ndarray, np.ndarray], m: Model, lr: float) -> tuple[Model, int]:
+def train(batch: tuple[np.ndarray, np.ndarray], m: Model, mm: ModelMetrics, lr: float):
     # the logic behind this function can be found in planning.ipynb/planning.pdf
     
     n_examples = batch[0].shape[0]
@@ -55,12 +90,6 @@ def train(batch: tuple[np.ndarray, np.ndarray], m: Model, lr: float) -> tuple[Mo
     adj_Z_2 = np.exp(Z_2 - Z_2.max(axis=1)[:, np.newaxis])
     adj_Z_2_sum = np.sum(adj_Z_2, 1)[:, np.newaxis]
     y_hat = adj_Z_2 / adj_Z_2_sum
-
-    # loss
-    L = y * y_hat
-    L = L.sum(axis=1)
-    L = -np.log(L)
-    L = L.mean()
 
     # backprop layer 2
     Delta_2 = y_hat - y
@@ -79,7 +108,28 @@ def train(batch: tuple[np.ndarray, np.ndarray], m: Model, lr: float) -> tuple[Mo
     m.W_1 = m.W_1 - lr * grad_W1
     m.B_1 = m.B_1 - lr * grad_B1
 
-    return (m, L)
+    mm.update(y, y_hat)
+
+    return
+
+def eval(batch: tuple[np.ndarray, np.ndarray], m: Model, mm: ModelMetrics):
+    X = batch[0]
+    y = batch[1]
+
+    # forward pass
+    Z_1 = X@m.W_1.T+m.B_1
+    H_1 = sigmoid(Z_1)
+    Z_2 = H_1@m.W_2.T+m.B_2
+
+    # softmax
+    adj_Z_2 = np.exp(Z_2 - Z_2.max(axis=1)[:, np.newaxis])
+    adj_Z_2_sum = np.sum(adj_Z_2, 1)[:, np.newaxis]
+    y_hat = adj_Z_2 / adj_Z_2_sum
+
+    mm.update(y, y_hat)
+
+    return
+
 
 if __name__ == "__main__":
 
@@ -96,9 +146,12 @@ if __name__ == "__main__":
 
     model = init_model(n_input, n_hidden, n_output)
 
+    metrics = ModelMetrics()
+
     for i in range(epochs):
         loss = 0
         # mb mini batch
         for mb in batch(d_train, 32):
-            model, loss = train(mb, model, lr)
-        print(loss)
+            train(mb, model, metrics, lr)
+        print(f"l={metrics.loss.value} acc={metrics.accuracy.value}")
+        metrics.reset()
