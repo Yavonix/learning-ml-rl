@@ -3,7 +3,7 @@ import sys
 from typing import Iterator
 from dataclasses import dataclass, field
 
-def sigmoid(x):
+def sigmoid(x) -> np.float64:
     return 1 / (1 + np.exp(-x))
 
 def one_hot(y: np.ndarray, n_classes: int) -> np.ndarray:
