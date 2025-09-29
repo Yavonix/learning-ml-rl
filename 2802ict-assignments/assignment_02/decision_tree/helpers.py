@@ -15,7 +15,7 @@ class Metric:
         if self.total() == 0: return 0.0
         return (self.TP + self.TN) / self.total()
     
-    def precision(self ) -> float:
+    def precision(self) -> float:
         denominator = self.TP + self.FP
         if denominator == 0: return 0.0
         return self.TP / denominator

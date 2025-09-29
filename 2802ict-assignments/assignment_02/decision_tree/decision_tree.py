@@ -1,10 +1,11 @@
+import sys
 import polars as pl
 import math
 from dataclasses import dataclass, field
 from typing import Any, Literal, Union, cast
 
 Status = Literal["unacc", "acc", "good", "vgood"]
-    
+
 CAR_COLUMNS = {
     "buying": pl.Enum(["low", "med", "high", "vhigh"]),
     "maint": pl.Enum(["low", "med", "high", "vhigh"]),
@@ -19,7 +20,7 @@ OUTCOME_CLASS = "class"
 @dataclass
 class InteriorNode:
     attribute: str
-    plurality_prediction: Status
+    plurality_prediction: Status # used when processing example and value for the attribute is not in the decision_tree
     decision_tree: 'dict[str, Node]' = field(default_factory=dict)
 
 @dataclass
@@ -28,13 +29,13 @@ class LeafNode:
 
 type Node = Union[InteriorNode, LeafNode]
 
-def entropy(examples: pl.DataFrame):
+def entropy(examples: pl.DataFrame) -> float:
     outcomes = examples[OUTCOME_CLASS].unique()
     total = examples.height
     chances = list(map(lambda k: examples.filter(pl.col(OUTCOME_CLASS) == k).height / total, outcomes))
     return -sum(p * math.log(p, 2) for p in chances if p > 0)
 
-def remainder(examples: pl.DataFrame, attribute: str):
+def remainder(examples: pl.DataFrame, attribute: str) -> float:
     total = examples.height
     final = 0
     ## Weighted average of entropy when filtered by each attribute value
@@ -60,7 +61,13 @@ def ID3(examples: pl.DataFrame, attributes: set[str], parent_examples: pl.DataFr
         return LeafNode(plurality_value(examples))
     else:
         ## Find best attribute
-        decision_attribute = max(attributes, key=lambda x: importance(examples, x))
+        
+        # decision_attribute = max(attributes, key=lambda x: importance(examples, x))
+
+        current_entropy = entropy(examples)
+        decision_attribute = max(attributes, key=lambda x: current_entropy - remainder(examples, x))
+        # this is slightly quicker than using the importance function as it
+        # avoids recomputing entropy for examples over and over 
  
         ## Construct tree
         tree = InteriorNode(decision_attribute, plurality_value(examples))
@@ -90,7 +97,9 @@ def pretty_print_tree(node: Node, indent: str = ""):
             pretty_print_tree(subtree, indent + "    ")
 
 def main():
-    df_csv = pl.read_csv("./dt-car.csv", schema_overrides=CAR_COLUMNS)
+    dataset_name = sys.argv[1]
+
+    df_csv = pl.read_csv(dataset_name, schema_overrides=CAR_COLUMNS)
     
     tree = ID3(df_csv, set(df_csv.columns) - {OUTCOME_CLASS}, df_csv)
 
