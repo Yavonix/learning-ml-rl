@@ -62,7 +62,8 @@ Given the state, the past is irrelevant for predicting the next step. Also:
 3.3:
 As you move the line "down" the agent must learn the "interactions" of each level down to achieve its goal making learning more difficult. Moreover, it would be irresponsible to use RL for instances where classic algorithms are more than sufficient to achieve optimal results. For instance, the RL algorithm could determine the optimal fuel ratio to adjust speed to get the car moving, but this would require also learning the dynamics of fuel injection. What would be better is that the RL algorithm output "speed" as an action and some highly refined, known classical system determines the correct fuel injection. I can see an argument for involving the additional complexity into the RL agent if the agent is meaningful able to make use of the additional complexity. For instance maybe the agent knows that using as much fuel as possible is part of the goal, where then it could adjust fuel injection to be least efficient to maximise the goal - something it could not have done if it could only output speed. There are fundamentals reasons for preferring one location over another, it is not free choice. 
 
-
+3.4:
+![[Exercises.png]]
 
 3.5:
 Instead of writing
@@ -135,6 +136,16 @@ v_\pi(\text{center state}) &= 0.25\cdot(0+0.9\cdot 2.3)\\
 &=0.7
 \end{align}
 $$
+3.15:
+$$
+v_c=\sum_{k=0}^{\infty} \gamma^k \cdot c=\frac{c}{1-\gamma}
+$$
+3.16:
+Adding a positive constant generally encourages longer episodes.
+
+
+
+
 
 
 

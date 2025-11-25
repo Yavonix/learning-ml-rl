@@ -1,0 +1,120 @@
+{
+  "data": {
+    "table-id-zhazlQ": {
+      "model": {
+        "columnIds": [
+          "column-id-fHHhFre6",
+          "column-id-bZ7cciAv"
+        ],
+        "rowIds": [
+          "row-id-3DQCEWw6",
+          "row-id-W1lZXkFb",
+          "row-id-3BCxS5v2"
+        ],
+        "cells": [
+          {
+            "id": "cell-id-rMpi95bp",
+            "columnId": "column-id-fHHhFre6",
+            "rowId": "row-id-3DQCEWw6",
+            "markdown": "New Column",
+            "html": "New Column",
+            "isHeader": true
+          },
+          {
+            "id": "cell-id-Q2sgYOis",
+            "columnId": "column-id-bZ7cciAv",
+            "rowId": "row-id-3DQCEWw6",
+            "markdown": "New Column",
+            "html": "New Column",
+            "isHeader": true
+          },
+          {
+            "id": "cell-id-HgyGuBYu",
+            "columnId": "column-id-fHHhFre6",
+            "rowId": "row-id-W1lZXkFb",
+            "markdown": "",
+            "html": "",
+            "isHeader": false
+          },
+          {
+            "id": "cell-id-HBt06CqY",
+            "columnId": "column-id-bZ7cciAv",
+            "rowId": "row-id-W1lZXkFb",
+            "markdown": "",
+            "html": "",
+            "isHeader": false
+          },
+          {
+            "id": "cell-id-fAx9LGWG",
+            "columnId": "column-id-fHHhFre6",
+            "rowId": "row-id-3BCxS5v2",
+            "markdown": "",
+            "html": "",
+            "isHeader": false
+          },
+          {
+            "id": "cell-id-Cx0v0ARf",
+            "columnId": "column-id-bZ7cciAv",
+            "rowId": "row-id-3BCxS5v2",
+            "markdown": "",
+            "html": "",
+            "isHeader": false
+          }
+        ]
+      },
+      "settings": {
+        "columns": {
+          "column-id-fHHhFre6": {
+            "sortDir": "default",
+            "width": "214px",
+            "type": "tag",
+            "useAutoWidth": false,
+            "shouldWrapOverflow": false,
+            "tags": [
+              {
+                "id": "tag-id-QDwwcR4n",
+                "markdown": "Week\tDate\tWhat key concepts/content will I learn?\tActivities/AssignmentsO' week\t20/02/2023\tOrientation Week\t\n1\t27/02/2023\tIntroduction to medical science; measurements in medical science\t\n2\t6/03/2023\tSafety and hazards in the medical science laboratory \tTask 1a. Online Measurements Quiz\n3\t13/03/2023\tCommon laboratory equipment in the medical science laboratory\t\nTask 1b: Pre-Laboratory Quiz Practical 2\n\nTask 1c: Laboratory Report Practical 2\n\n4\t20/03/2023\tLaboratory maths and solution preparation \tCensus\n5\t27/03/2023\tHuman specimen collection (Part 1) and Clinical Laboratory Testing\t\nTask 1b: Pre-Laboratory Quiz Practical 3\n\nTask 1c: Laboratory Report Practical 3\n\n6*\t3/04/2023\tHuman specimen collection (Part 2) \tTask 1d: Case Study Practical 3\nBreak - teaching free period\t\n7\t17/04/2023\tNo topic due to the review quiz \tTask 2: Review Quiz\n8*\t24/04/2023\tProfessional ethics in medical science \t\n9*\t1/05/2023\tTechniques and instrumentation in medical science (Part 1) \t\nTask 1b: Pre-Laboratory Quiz Practical 4\n\nTask 1c: Laboratory Report Practical 4\n\n10\t8/05/2023\t Techniques and instrumentation in medical science (Part 2) \t\n11\t15/05/2023\t Quality assessment and quality control in medical science (Part 1)\t\nTask 1b: Pre-Laboratory Quiz Practical 5\n\nTask 1c: Laboratory Report Practical 5\n\n12\t22/05/2023\t Quality assessment and quality control in medical science (Part 2)\t \n13\t29/05/2023\t Careers in medical science: Applying for jobs \tTask 1d. Case Study Practical 4 and 5\n5/06/2023\tStudy Break\t\n12/06/2023\tExams\tDate to be advised in Exam timetable\n19/06/2023\tExams\tDate to be advised in Exam timetable\n*Public holidays: Week 6 Fri 7th April Good Friday; Week 8 Tue 25th April Anzac Day; Week 9 Mon 1st May Labour Day",
+                "html": "Week\tDate\tWhat key concepts/content will I learn?\tActivities/AssignmentsO' week\t20/02/2023\tOrientation Week\t\n1\t27/02/2023\tIntroduction to medical science; measurements in medical science\t\n2\t6/03/2023\tSafety and hazards in the medical science laboratory \tTask 1a. Online Measurements Quiz\n3\t13/03/2023\tCommon laboratory equipment in the medical science laboratory\t\nTask 1b: Pre-Laboratory Quiz Practical 2\n\nTask 1c: Laboratory Report Practical 2\n\n4\t20/03/2023\tLaboratory maths and solution preparation \tCensus\n5\t27/03/2023\tHuman specimen collection (Part 1) and Clinical Laboratory Testing\t\nTask 1b: Pre-Laboratory Quiz Practical 3\n\nTask 1c: Laboratory Report Practical 3\n\n6*\t3/04/2023\tHuman specimen collection (Part 2) \tTask 1d: Case Study Practical 3\nBreak - teaching free period\t\n7\t17/04/2023\tNo topic due to the review quiz \tTask 2: Review Quiz\n8*\t24/04/2023\tProfessional ethics in medical science \t\n9*\t1/05/2023\tTechniques and instrumentation in medical science (Part 1) \t\nTask 1b: Pre-Laboratory Quiz Practical 4\n\nTask 1c: Laboratory Report Practical 4\n\n10\t8/05/2023\t Techniques and instrumentation in medical science (Part 2) \t\n11\t15/05/2023\t Quality assessment and quality control in medical science (Part 1)\t\nTask 1b: Pre-Laboratory Quiz Practical 5\n\nTask 1c: Laboratory Report Practical 5\n\n12\t22/05/2023\t Quality assessment and quality control in medical science (Part 2)\t\n13\t29/05/2023\t Careers in medical science: Applying for jobs \tTask 1d. Case Study Practical 4 and 5\n5/06/2023\tStudy Break\t\n12/06/2023\tExams\tDate to be advised in Exam timetable\n19/06/2023\tExams\tDate to be advised in Exam timetable\n*Public holidays: Week 6 Fri 7th April Good Friday; Week 8 Tue 25th April Anzac Day; Week 9 Mon 1st May Labour Day",
+                "color": "pink",
+                "cells": [
+                  {
+                    "columnId": "column-id-fHHhFre6",
+                    "rowId": "row-id-Ul37MBXs"
+                  }
+                ]
+              }
+            ]
+          },
+          "column-id-bZ7cciAv": {
+            "sortDir": "default",
+            "width": "120px",
+            "type": "text",
+            "useAutoWidth": false,
+            "shouldWrapOverflow": false,
+            "tags": []
+          }
+        },
+        "rows": {
+          "row-id-3DQCEWw6": {
+            "creationDate": 1676368070879
+          },
+          "row-id-W1lZXkFb": {
+            "creationDate": 1676368101942
+          },
+          "row-id-3BCxS5v2": {
+            "creationDate": 1676368102867
+          }
+        }
+      },
+      "pluginVersion": 505
+    }
+  },
+  "tableFolder": "_notion-like-tables",
+  "viewModeSync": {
+    "tableId": "table-id-zhazlQ",
+    "viewModes": [],
+    "eventType": "update-state"
+  },
+  "shouldClear": false,
+  "shouldDebug": false
+}

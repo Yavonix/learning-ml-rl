@@ -1,0 +1,12 @@
+table {
+    width: 100%;
+    border-radius: 5px !important;
+}
+
+thead {
+    background-color: var(--background-secondary);
+}
+
+th {
+    text-align: center !important;
+}

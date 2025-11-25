@@ -1,0 +1,310 @@
+{
+  "main": {
+    "id": "feccd185f940c573",
+    "type": "split",
+    "children": [
+      {
+        "id": "f4ae53798c8950eb",
+        "type": "tabs",
+        "dimension": 41.1214953271028,
+        "children": [
+          {
+            "id": "8736657ce369fbc0",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "rl-notes/note_taking/Part 1.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Part 1"
+            }
+          },
+          {
+            "id": "1f97e014ff569250",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "rl-notes/note_taking/Exercises.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Exercises"
+            }
+          },
+          {
+            "id": "7ffa8bd671cddfb5",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "rl-notes/note_taking/RL Notes.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "RL Notes"
+            }
+          }
+        ],
+        "currentTab": 2
+      },
+      {
+        "id": "fdfbdbd42b2b66d1",
+        "type": "tabs",
+        "dimension": 58.87850467289719,
+        "children": [
+          {
+            "id": "684908af23723a57",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "rl-notes/note_taking/Cheat sheet.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Cheat sheet"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "3385927079406053",
+    "type": "split",
+    "children": [
+      {
+        "id": "acf69defca1c718c",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "7946a3389a21e5b4",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "f15bdf64a940c955",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "ea742955c843d4e4",
+            "type": "leaf",
+            "state": {
+              "type": "starred",
+              "state": {},
+              "icon": "lucide-ghost",
+              "title": "starred"
+            }
+          },
+          {
+            "id": "c1791450f9ff661f",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 379.5,
+    "collapsed": true
+  },
+  "right": {
+    "id": "7a789462dcd859c5",
+    "type": "split",
+    "children": [
+      {
+        "id": "80c9b00eededa8bf",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "2e877a952974650e",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "018 BIM331 Immunology/Slides/BIM331 Week 1 Topic 2_view-1.pdf",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for BIM331 Week 1 Topic 2_view-1"
+            }
+          },
+          {
+            "id": "ecdaed8d0e826c71",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "018 BIM331 Immunology/Slides/BIM331 Week 1 Topic 2_view-1.pdf",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from BIM331 Week 1 Topic 2_view-1"
+            }
+          },
+          {
+            "id": "92567c882c3be887",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "27acdfc14c8b411f",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "018 BIM331 Immunology/Slides/BIM331 Week 1 Topic 2_view-1.pdf",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of BIM331 Week 1 Topic 2_view-1"
+            }
+          },
+          {
+            "id": "54f04fd440b6a2d6",
+            "type": "leaf",
+            "state": {
+              "type": "advanced-tables-toolbar",
+              "state": {},
+              "icon": "lucide-ghost",
+              "title": "advanced-tables-toolbar"
+            }
+          },
+          {
+            "id": "9f28c7ca90ef4fee",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          }
+        ],
+        "currentTab": 3
+      }
+    ],
+    "direction": "horizontal",
+    "width": 200,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "bases:Create new base": false,
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "table-editor-obsidian:Advanced Tables Toolbar": false,
+      "obsidian-excalidraw-plugin:New drawing": false
+    }
+  },
+  "active": "684908af23723a57",
+  "lastOpenFiles": [
+    "rl-notes/note_taking/attachments/Cheat sheet 1.png",
+    "rl-notes/note_taking/attachments/Cheat sheet.png",
+    "rl-notes/note_taking/RL Notes.md",
+    "rl-notes/note_taking/Cheat sheet.md",
+    "rl-notes/note_taking/Part 1.md",
+    "rl-notes/note_taking/Exercises.md",
+    "rl-notes/note_taking/attachments/markov-decision-process-value-example.png",
+    "rl-notes/note_taking/attachments/optimal-action-value-function-example.png",
+    "rl-notes/note_taking/attachments/Exercises.png",
+    "d2l-notes/02 prelim/02 prelim.md",
+    "014 2802ICT Intelligent Systems/RL/Part 1.md",
+    "014 2802ICT Intelligent Systems/RL/Exercises.md",
+    "014 2802ICT Intelligent Systems/RL/RL Notes.md",
+    "014 2802ICT Intelligent Systems/Lab 03/Practise 2.md",
+    "014 2802ICT Intelligent Systems/RL/images/markov-decision-process-value-example.png",
+    "014 2802ICT Intelligent Systems/RL/images/markov-reward-process-filled.png",
+    "014 2802ICT Intelligent Systems/RL/images/optimal-state-value-function-example.png",
+    "014 2802ICT Intelligent Systems/RL/images/markov-reward-process.png",
+    "014 2802ICT Intelligent Systems/RL/images/markov-decision-process.png",
+    "014 2802ICT Intelligent Systems/RL/images/verifying-bellman-equations.png",
+    "014 2802ICT Intelligent Systems/RL/images",
+    "014 2802ICT Intelligent Systems/RL/attachments",
+    "014 2802ICT Intelligent Systems/RL/Extracts/Chapter 2.pdf",
+    "014 2802ICT Intelligent Systems/RL/Extracts",
+    "014 2802ICT Intelligent Systems/RL/New folder",
+    "014 2802ICT Intelligent Systems/Deferred Quiz/Scratchpad.md",
+    "014 2802ICT Intelligent Systems/RL",
+    "014 2802ICT Intelligent Systems/Slides/1-4.pdf",
+    "014 2802ICT Intelligent Systems/Lab 03/Workshop Week 4_CSP.pdf",
+    "014 2802ICT Intelligent Systems/Lab 02/Workshop Week 3.pdf",
+    "014 2802ICT Intelligent Systems/Lab 01/Workshop Week 2 sol.pdf",
+    "014 2802ICT Intelligent Systems/Notes 5.md",
+    "014 2802ICT Intelligent Systems/Not.md",
+    "014 2802ICT Intelligent Systems/Notes 2-4.md",
+    "011 2801ICT Computing Algorithms/Notes/02 Data Structures.md",
+    "011 2801ICT Computing Algorithms/Exam Program/Recursive Relation Definition Example.md",
+    "011 2801ICT Computing Algorithms/Exam Program/Untitled.md",
+    "011 2801ICT Computing Algorithms/Exam Program/toposort_renders.md",
+    "011 2801ICT Computing Algorithms/Exam Program/horspool_renders.md",
+    "011 2801ICT Computing Algorithms/Exam Program/heapsort_renders.md",
+    "011 2801ICT Computing Algorithms/Exam Program/dijkstra_renders.md",
+    "011 2801ICT Computing Algorithms/Exam Program/rbt_tree_renders.md",
+    "011 2801ICT Computing Algorithms/Notes/01 Introduction.md",
+    "011 2801ICT Computing Algorithms/Exam Prep/Notes.md",
+    "011 2801ICT Computing Algorithms/Exam Program/avl_tree_renders.md",
+    "011 2801ICT Computing Algorithms/Notes/05-06 Searching Algorithms.md"
+  ]
+}

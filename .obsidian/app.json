@@ -1,0 +1,16 @@
+{
+  "spellcheck": true,
+  "spellcheckLanguages": null,
+  "alwaysUpdateLinks": true,
+  "showUnsupportedFiles": false,
+  "pdfExportSettings": {
+    "includeName": false,
+    "pageSize": "A4",
+    "landscape": false,
+    "margin": "2",
+    "downscalePercent": 100
+  },
+  "attachmentFolderPath": "./attachments",
+  "readableLineLength": false,
+  "showInlineTitle": true
+}

@@ -1,0 +1,19 @@
+{
+  "attachmentFolderPath": "./attachments",
+  "autoRenameFiles": false,
+  "autoRenameFolder": true,
+  "convertImagesOnDragAndDrop": false,
+  "convertImagesToJpeg": false,
+  "deleteOrphanAttachments": false,
+  "duplicateNameSeparator": " ",
+  "jpegQuality": 0.8,
+  "keepEmptyAttachmentFolders": false,
+  "pastedFileName": "${filename}",
+  "renameAttachmentsOnDragAndDrop": false,
+  "renameCollectedFiles": false,
+  "renameOnlyImages": true,
+  "renamePastedFilesWithKnownNames": false,
+  "toLowerCase": false,
+  "whitespaceReplacement": "",
+  "customTokensStr": ""
+}

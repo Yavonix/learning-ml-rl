@@ -1,0 +1,29 @@
+.callout-content > p {
+    margin: 5px 0px;
+    padding: 0;
+}
+
+.callout-icon {
+    margin-top: 0px;
+}
+
+.callout-icon > svg {
+    height: calc(var(--icon-size)/1.5);
+}
+
+.callout-fold {
+    margin-top: 0px;
+}
+
+.callout-fold > svg {
+    height: calc(var(--icon-size)/1.5);
+}
+
+.callout-title-inner {
+    font-size: 0.7rem;
+    margin-top: -2px;
+}
+
+.callout {
+    padding: 10px 20px;
+}

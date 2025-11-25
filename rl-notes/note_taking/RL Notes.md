@@ -81,7 +81,7 @@ $$
 * $R(\text{pass}) = +10$
 * $R(\text{sleep}) = 0$
 
-![](images/markov-reward-process.png)
+![](markov-reward-process.png)
 
 #### Return
 The return $G_t$, in the simplest case, is the total future reward:
@@ -179,7 +179,7 @@ where $I$ is the identity matrix. Unfortunately, this matrix inversion is too sl
 
 Verifying the bellman equation:
 
-![alt text](images/verifying-bellman-equations.png)
+![alt text](verifying-bellman-equations.png)
 
 #### Markov Decision Process
 Adds 'actions' to the Markov Reward Process so the transition probability matrix now depends on which action the agent takes.
@@ -192,7 +192,7 @@ A **Markov decision process** is a tuple $\langle \mathcal{S, A, P, R, \gamma} \
 - $\mathcal{R}$ is a **reward function** where $\mathcal{R}_s^{a}=\mathbb{E}[R_{t+1}|S_t = s, A_t = a]$
 - $\gamma$ is the **discount** rate $\gamma \in [0,1]$
 
-![alt text](images/markov-decision-process.png)
+![alt text](markov-decision-process.png)
 
 
 #### Policy
@@ -234,7 +234,7 @@ q_{\pi}(s, a) &= \mathbb{E}_{\pi}[G_t \mid S_t = s, A_t = a] \\
 \end{aligned}
 $$
 
-![alt text](images/markov-decision-process-value-example.png)
+![alt text](attachments/markov-decision-process-value-example.png)
 
 #### Optimal state value function
 The maximum value function over all policies:
@@ -245,9 +245,9 @@ $$v_* = \max_\pi v_\pi (s)$$
 The maximum action value function over all policies:
 $$ q_* (s,a) = \max_\pi q_\pi(s,a)$$
 
-![alt text](images/optimal-state-value-function-example.png)
+![alt text](optimal-state-value-function-example.png)
 
-![alt text](images/optimal-action-value-function-example.png)
+![alt text](optimal-action-value-function-example.png)
 
 
 

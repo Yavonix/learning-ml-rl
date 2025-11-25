@@ -1,0 +1,20 @@
+{
+  "accentColor": "",
+  "theme": "moonstone",
+  "textFontFamily": "SF Pro Text",
+  "interfaceFontFamily": "SF Pro Display",
+  "monospaceFontFamily": "SF Mono",
+  "baseFontSize": 19,
+  "cssTheme": "Things",
+  "enabledCssSnippets": [
+    "bolder_bold",
+    "tableutils",
+    "imgutils",
+    "calloututil"
+  ],
+  "translucency": true,
+  "baseFontSizeAction": true,
+  "showRibbon": true,
+  "showViewHeader": true,
+  "nativeMenus": false
+}

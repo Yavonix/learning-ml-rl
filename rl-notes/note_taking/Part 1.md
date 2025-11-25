@@ -152,18 +152,6 @@ This method does have some problems though:
 
 ## Chapter 3 Finite Markov Decision Processes
 
-### Extra
-**Action value** function is the long term value of a state when choosing an action with policy $\pi$:
-$$
-q_\pi(s, a) = \mathbb{E}_\pi[G_t \mid S_t = s, A_t = a]
-$$
-**State value** function $v_\pi$ is the same, but is the return when following a given policy $\pi$:
-$$v_\pi = \mathbb{E}_\pi[G_t \mid S_t = s]$$
-**Optimal state value** function is the maximum value function over all policies:
-$$v_* = \max_\pi v_\pi (s)$$
-
-**Optimal action value** function the maximum action value function over all policies:
-$$ q_* (s,a) = \max_\pi q_\pi(s,a)$$
 ### Overview 
 **Markov decision process trajectory**:
 S is state, A is action, R is reward. Reward is given as part of the next state.
@@ -191,7 +179,7 @@ G_t \doteq R_{t+1} + \gamma R_{t+2} + \gamma^2 R_{t+3} + \ldots
 =
 \sum_{k=0}^\infty \gamma^k R_{t+k+1}
 $$
-If $\gamma=0$, the agent is “myopic”.
+If $\gamma=0$, the agent is “myopic” (shortsighted)
 
 **Monte Carlo methods**: repeated random sampling to obtain numerical results
 
