@@ -35,7 +35,7 @@ We also have an alternate definition for 3.8: (3.11)
 $$
 G_t \doteq \sum_{k=t+1}^T \gamma^{k-t-1} R_{k} \tag{3.11}
 $$
-## Policies and Value Function
+## Policies and Value Functions
 A **policy** maps *states* to probabilities of selecting an *action*. E.g., $\pi(a\mid s)$.
 
 **State-value function**: expected return for a state: (3.12)
@@ -46,7 +46,7 @@ $$
 $$
 q_{\pi}(s, a) \doteq \mathbb{E}_{\pi}[G_t \mid S_t = s, A_t = a] = \mathbb{E}_{\pi}\left[\sum_{k=0}^{\infty} \gamma^k R_{t+k+1} \biggm| S_t = s, A_t = a\right] \tag{3.13}
 $$
-3.12 can be written recursively to represent the Bellman equation for $v_\pi$: (3.14)
+3.12 can be written recursively to represent the *Bellman equation* for $v_\pi$: (3.14)
 $$
 \begin{align}
 v_{\pi}(s) &\doteq \mathbb{E}_{\pi}[G_t \mid S_t = s] \\
@@ -58,7 +58,7 @@ $$
 Backup diagram:
 ![[Cheat sheet.png|center]]
 
-3.13 can be written recursively to represent the Bellman equation for $q_\pi$:
+3.13 can be written recursively to represent the *Bellman equation* for $q_\pi$:
 $$
 \begin{align}
 q_{\pi}(s, a) &= \mathbb{E}_{\pi}[G_t \mid S_t = s, A_t = a] \\
@@ -71,11 +71,45 @@ $$
 Backup diagram:
 ![[Cheat sheet 1.png|center]]
 
+## Optimal Policies and Optimal Value Functions
+An *optimal policy* ($\pi_*$) consists of an *optimal state-value function* ($v_*(s)$) as defined by: (3.15)
+$$
+v_*(s) \doteq \max_\pi v_\pi(s) \tag{3.15}
+$$
+and an *optimal action-value function* ($q_*(s,a)$) as defined by: (3.16)
+$$
+q_*(s,a) \doteq \max_\pi q_\pi(s,a) \tag{3.16}
+$$
+for all $s \in \mathcal{S}$, $a \in \mathcal{A}$. Also $q_*(s,a)$ can be written as: (3.17)
+$$
+q_*(s,a)=\mathbb{E}[R_{t+1}+\gamma v_*(S_{t+1}) \mid S_t=s, A_t=a] \tag{3.17}
+$$
+
+The Bellman equation for $v_*$ is termed the *Bellman optimality equation*: (two forms: 3.18, 3.19)
+$$
+\begin{align}
+v_*(s) &= \max_{a \in \mathcal{A}(s)} q_{\pi_*}(s, a) \\
+&= \max_{a} \mathbb{E}_{\pi_*} [ G_t \mid S_t = s, A_t = a ] \\
+&= \max_{a} \mathbb{E}_{\pi_*} [ R_{t+1} + \gamma G_{t+1} \mid S_t = s, A_t = a ] & \tag{by (3.9)} \\
+&= \max_{a} \mathbb{E} [ R_{t+1} + \gamma v_*(S_{t+1}) \mid S_t = s, A_t = a ] \tag{3.18} \\
+&= \max_{a} \sum_{s', r} p(s', r \mid s, a) [ r + \gamma v_*(s') ]. \tag{3.19}
+\end{align}
+$$
+The *Bellman optimality equation* for $q_*$ is: (3.20)
+$$
+\begin{align}
+q_*(s, a) &= \mathbb{E} \left[ R_{t+1} + \gamma \max_{a'} q_*(S_{t+1}, a') \mid S_t = s, A_t = a \right] \\
+&= \sum_{s', r} p(s', r \mid s, a) \left[ r + \gamma \max_{a'} q_*(s', a') \right]. \tag{3.20}
+\end{align}
+$$
+Backup diagrams:
+![[Cheat sheet 2.png|center]]
 
 
 
 
-Up to ex 3.17
+
+
 
 
 

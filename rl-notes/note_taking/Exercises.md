@@ -143,11 +143,146 @@ $$
 3.16:
 Adding a positive constant generally encourages longer episodes.
 
+3.17:
+$$
+\begin{align} q_{\pi}(s, a) &= \mathbb{E}_{\pi}[G_t \mid S_t = s, A_t = a] \\ &= \mathbb{E}_{\pi}[R_{t+1} + \gamma G_{t+1} \mid S_t = s, A_t = a] \\ &= \sum_{s', r} p(s', r \mid s, a) \left[ r + \gamma \mathbb{E}_{\pi}[G_{t+1} \mid S_{t+1} = s'] \right] \\ &= \sum_{s', r} p(s', r \mid s, a) \left[ r + \gamma \sum_{a'} \pi(a'|s') q_{\pi}(s', a') \right] \end{align}
+$$
 
+3.18:
+$$
+\begin{aligned}
+v_\pi(s) &= \mathbb{E}_{\pi} [ q_\pi(S_t, A_t) \mid S_t = s ] \\
+&= \sum_{a \in \mathcal{A}} \pi(a|s) q_\pi(s, a)
+\end{aligned}
+$$
 
+3.19:
+$$
+\begin{aligned}
+q_\pi(s, a) &= \mathbb{E} [ R_{t+1} + \gamma v_\pi(S_{t+1}) \mid S_t = s, A_t = a ] \\
+&= \sum_{s', r} p(s', r \mid s, a) \left[ r + \gamma v_\pi(s') \right]
+\end{aligned}
+$$
 
+3.20:
+It will be similar to $v_{putt}$ in terms of contour shape, but the contours will be far more spread out as we can use the driver to achieve more distance with the same number of swings.
 
+3.21:
+With $q_*(s, \text{putter})$ we are forced to start with a shortrange putter followed by the optimal choice. For this reason, compared to $q_*(s, \text{driver})$ we will yield better contours (equal to $v_*$) next to the flag pole (ie on the green) and worse contours far away.
 
+3.22:
+When $\gamma=0$, we care only about immediate reward, therefore optimal policy is $\pi_\text{left}$.
+When $\gamma=0.5$, the policy $\pi_\text{left}$ has return:
+$$G_t=1 + \sum_{k=0}^\infty 1\cdot 0.25 \cdot 0.25^{k} = 1.\overline{3}$$
+while the policy $\pi_\text{right}$ has return:
+$$
+G_t = 0 + \sum_{k=0}^\infty 2 \cdot 0.5 \cdot 0.25^{k} = 1.\overline{3}
+$$
+So either policy is optimal.
+When $\gamma=0.9$, the policy $\pi_\text{left}$ has return:
+$$
+G_t=1 + \sum_{k=0}^\infty 1\cdot 0.81 \cdot 0.81^{k} = 5.26
+$$
+while the policy $\pi_\text{right}$ has return:
+$$
+G_t = 0 + \sum_{k=0}^\infty 2 \cdot 0.9 \cdot 0.81^{k} = 9.47
+$$
+So policy $\pi_\text{right}$ is optimal.
 
-399
-434
+3.23:
+1. State: High ($h$)
+$$\begin{aligned}
+q_*(h, \text{wait}) &= r_{\text{wait}} + \gamma \max \left\{
+    \begin{aligned}
+    &q_*(h, \text{wait}), \\
+    &q_*(h, \text{search})
+    \end{aligned}
+\right\} \\[1em]
+q_*(h, \text{search}) &= r_{\text{search}} + \gamma \left(
+    \alpha \max \left\{
+        \begin{aligned}
+        &q_*(h, \text{wait}), \\
+        &q_*(h, \text{search})
+        \end{aligned}
+    \right\}
+    + (1-\alpha) \max \left\{
+        \begin{aligned}
+        &q_*(l, \text{wait}), \\
+        &q_*(l, \text{search}), \\
+        &q_*(l, \text{recharge})
+        \end{aligned}
+    \right\}
+\right)
+\end{aligned}$$
+2. State: Low ($l$)
+$$\begin{aligned}
+q_*(l, \text{wait}) &= r_{\text{wait}} + \gamma \max \left\{
+    \begin{aligned}
+    &q_*(l, \text{wait}), \\
+    &q_*(l, \text{search}), \\
+    &q_*(l, \text{recharge})
+    \end{aligned}
+\right\} \\[1em]
+q_*(l, \text{recharge}) &= 0 + \gamma \max \left\{
+    \begin{aligned}
+    &q_*(h, \text{wait}), \\
+    &q_*(h, \text{search})
+    \end{aligned}
+\right\} \\[1em]
+q_*(l, \text{search}) &= \beta \left[ r_{\text{search}} + \gamma \max \left\{
+    \begin{aligned}
+    &q_*(l, \text{wait}), \\
+    &q_*(l, \text{search}), \\
+    &q_*(l, \text{recharge})
+    \end{aligned}
+\right\} \right] \\
+&\quad + (1-\beta) \left[ -3 + \gamma \max \left\{
+    \begin{aligned}
+    &q_*(h, \text{wait}), \\
+    &q_*(h, \text{search})
+    \end{aligned}
+\right\} \right]
+\end{aligned}$$
+
+3.24:
+$$ \begin{aligned} v_*(A) &= 10 + \gamma^5(10) + \gamma^{10}(10) + \dots \\ &= \sum_{k=0}^{\infty} 10 \cdot (\gamma^5)^k \\ &= \frac{10}{1 - \gamma^5} \end{aligned} $$Given $\gamma = 0.9$: $$ v_*(A) = \frac{10}{1 - (0.9)^5} = \frac{10}{1 - 0.59049} = \frac{10}{0.40951} \approx 24.419 $$
+3.25:
+$$
+v_*(s) = \max_{a \in \mathcal{A}(s)} q_*(s, a)
+$$
+
+3.26:
+$$
+q_*(s, a) = \sum_{s', r} p(s', r \mid s, a) [ r + \gamma v_*(s') ]
+$$
+
+3.27:
+$$
+\pi_*(a|s) = \begin{cases} \frac{1}{|A^*_s|} & \text{if } a \in A^*_s \\ 0 & \text{otherwise} \end{cases}
+$$
+
+3.28: (better notation)
+$$ \pi_*(s) \doteq \operatorname*{argmax}_{a} \sum_{s', r} p(s', r \mid s, a) \left[ r + \gamma v_*(s') \right] $$
+
+3.29:
+Bellman Equations in terms of $r(s,a)$ and $p(s'|s,a)$
+
+1. State-Value Function $v_\pi(s)$
+$$
+v_\pi(s) = \sum_{a \in \mathcal{A}} \pi(a|s) \left[ r(s,a) + \gamma \sum_{s' \in \mathcal{S}} p(s'|s,a) v_\pi(s') \right]
+$$
+
+2. Action-Value Function $q_\pi(s,a)$
+$$
+q_\pi(s,a) = r(s,a) + \gamma \sum_{s' \in \mathcal{S}} p(s'|s,a) \sum_{a' \in \mathcal{A}} \pi(a'|s') q_\pi(s',a')
+$$
+
+3. Optimal State-Value $v_*(s)$
+$$
+v_*(s) = \max_{a \in \mathcal{A}} \left[ r(s,a) + \gamma \sum_{s' \in \mathcal{S}} p(s'|s,a) v_*(s') \right]
+$$
+
+4. Optimal Action-Value $q_*(s,a)$
+$$
+q_*(s,a) = r(s,a) + \gamma \sum_{s' \in \mathcal{S}} p(s'|s,a) \max_{a' \in \mathcal{A}} q_*(s',a')
+$$

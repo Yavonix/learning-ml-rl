@@ -6,7 +6,7 @@
       {
         "id": "f4ae53798c8950eb",
         "type": "tabs",
-        "dimension": 41.1214953271028,
+        "dimension": 41.05263157894737,
         "children": [
           {
             "id": "8736657ce369fbc0",
@@ -51,12 +51,12 @@
             }
           }
         ],
-        "currentTab": 2
+        "currentTab": 1
       },
       {
         "id": "fdfbdbd42b2b66d1",
         "type": "tabs",
-        "dimension": 58.87850467289719,
+        "dimension": 58.94736842105262,
         "children": [
           {
             "id": "684908af23723a57",
@@ -258,14 +258,15 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "684908af23723a57",
+  "active": "1f97e014ff569250",
   "lastOpenFiles": [
+    "rl-notes/note_taking/Cheat sheet.md",
+    "rl-notes/note_taking/Exercises.md",
+    "rl-notes/note_taking/attachments/Cheat sheet 2.png",
+    "rl-notes/note_taking/RL Notes.md",
     "rl-notes/note_taking/attachments/Cheat sheet 1.png",
     "rl-notes/note_taking/attachments/Cheat sheet.png",
-    "rl-notes/note_taking/RL Notes.md",
-    "rl-notes/note_taking/Cheat sheet.md",
     "rl-notes/note_taking/Part 1.md",
-    "rl-notes/note_taking/Exercises.md",
     "rl-notes/note_taking/attachments/markov-decision-process-value-example.png",
     "rl-notes/note_taking/attachments/optimal-action-value-function-example.png",
     "rl-notes/note_taking/attachments/Exercises.png",
@@ -278,8 +279,6 @@
     "014 2802ICT Intelligent Systems/RL/images/markov-reward-process-filled.png",
     "014 2802ICT Intelligent Systems/RL/images/optimal-state-value-function-example.png",
     "014 2802ICT Intelligent Systems/RL/images/markov-reward-process.png",
-    "014 2802ICT Intelligent Systems/RL/images/markov-decision-process.png",
-    "014 2802ICT Intelligent Systems/RL/images/verifying-bellman-equations.png",
     "014 2802ICT Intelligent Systems/RL/images",
     "014 2802ICT Intelligent Systems/RL/attachments",
     "014 2802ICT Intelligent Systems/RL/Extracts/Chapter 2.pdf",
