@@ -1,3 +1,4 @@
+# Ch 3 Finite Markov Decision Processes
 ## Dynamics of the MDP
 MDP **dynamics** is defined by: (3.2)
 $$p(s', r \mid s, a) \doteq \Pr\{ S_t = s', R_t = r \mid S_{t-1} = s, A_{t-1} = a \} \tag{3.2}$$
@@ -104,6 +105,24 @@ q_*(s, a) &= \mathbb{E} \left[ R_{t+1} + \gamma \max_{a'} q_*(S_{t+1}, a') \mid 
 $$
 Backup diagrams:
 ![[Cheat sheet 2.png|center]]
+
+# Ch 4 Dynamic Programming
+Refreshing the Bellman optimality equations:
+$$
+\begin{align} v_*(s) &= \max_{a} \mathbb{E}[R_{t+1} + \gamma v_*(S_{t+1}) \mid S_t=s, A_t=a] \\ &= \max_{a} \sum_{s',r} p(s',r|s,a)[r + \gamma v_*(s')], \text{ or} \tag{4.1} \\
+q_*(s,a) &= \mathbb{E}\left[R_{t+1} + \gamma \max_{a'} q_*(S_{t+1}, a') \mid S_t=s, A_t=a\right] \\ &= \sum_{s',r} p(s',r|s,a)\left[r + \gamma \max_{a'} q_*(s', a')\right], \tag{4.2}
+\end{align}
+$$
+
+
+
+
+
+
+
+
+
+
 
 
 
