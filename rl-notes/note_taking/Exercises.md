@@ -156,7 +156,7 @@ v_\pi(s) &= \mathbb{E}_{\pi} [ q_\pi(S_t, A_t) \mid S_t = s ] \\
 \end{aligned}
 $$
 
-3.19:
+**3.19**:
 $$
 \begin{aligned}
 q_\pi(s, a) &= \mathbb{E} [ R_{t+1} + \gamma v_\pi(S_{t+1}) \mid S_t = s, A_t = a ] \\
@@ -286,3 +286,93 @@ $$
 $$
 q_*(s,a) = r(s,a) + \gamma \sum_{s' \in \mathcal{S}} p(s'|s,a) \max_{a' \in \mathcal{A}} q_*(s',a')
 $$
+
+4.1:
+Using:
+$$
+\begin{aligned}
+q_\pi(s, a) &= \mathbb{E} [ R_{t+1} + \gamma v_\pi(S_{t+1}) \mid S_t = s, A_t = a ] \\
+&= \sum_{s', r} p(s', r \mid s, a) \left[ r + \gamma v_\pi(s') \right]
+\end{aligned}
+$$
+We have:
+- $q_\pi(11, \text{down}) = -1$
+- $q_\pi(7, \text{down}) = -1 + \gamma \cdot v_\pi = -1 + 1 \cdot -14 = -15$.
+
+
+4.2:
+Assuming dynamics of other cells unchanged.
+First part:
+$$
+\begin{align}
+v_\pi(15) &= \sum_a \pi(a\mid s) \sum_{s, r} p(s', r \mid s, a) \cdot \left[r + v_\pi(s') \right] \\
+&= 0.25 \cdot \left[(-1 +-22) + (-1+-20) + (-1+-14) + (-1+v_\pi(15)) \right] \\
+&= -20
+\end{align}
+$$
+Second part:
+$$
+\begin{align}
+v_\pi(13) &= \sum_a \pi(a\mid s) \sum_{s, r} p(s', r \mid s, a) \cdot \left[r + v_\pi(s') \right] \\
+&= 0.25 \cdot \left[(-1 +-22) + (-1+-20) + (-1+-14) + (-1+v_\pi(15)) \right] \\
+\\
+v_\pi(15) &= \sum_a \pi(a\mid s) \sum_{s, r} p(s', r \mid s, a) \cdot \left[r + v_\pi(s') \right] \\
+&= 0.25 \cdot \left[(-1 +-22) + (-1+ v_\pi(13)) + (-1+-14) + (-1+v_\pi(15)) \right] \\
+\end{align}
+$$
+Solving yields: $v_\pi(15)=-20, v_\pi(13)=-20$
+
+4.3:
+For 4.3 and 4.4:
+$$
+\begin{align}
+q_\pi(s,a) &= \mathbb{E}_\pi \left[ R_{t+1} + \gamma  q_\pi(S_{t+1}, A_{t+1}) \mid S_t=s, A_t=a \right] \\
+&= \sum_{s',r} p(s',r \mid s, a) \cdot \left[r + \gamma \sum_{a'} \pi(a'\mid s') \cdot q_\pi(s', a') \right] 
+\end{align}
+$$
+And for 4.5:
+$$
+q_{k+1}(s,a) = \sum_{s',r} p(s',r \mid s, a) \cdot \left[r + \gamma \sum_{a'} \pi(a'\mid s') \cdot q_k(s', a') \right] 
+$$
+
+4.4:
+Either use a deterministic tie-breaking rule or better yet, **give priority to the current action**.
+
+4.5:
+$$
+\begin{array}{l}
+\textbf{1. Initialization} \\
+\quad Q(s,a) \in \mathbb{R} \text{ and } \pi(s) \in \mathcal{A}(s) \text{ arbitrarily for all } s \in \mathcal{S}, a \in \mathcal{A} \\
+\\
+\textbf{2. Policy Evaluation} \\
+\quad \textbf{Loop:} \\
+\qquad \Delta \leftarrow 0 \\
+\qquad \textbf{Loop for each } s \in \mathcal{S}: \\
+\qquad \qquad \textbf{Loop for each } a \in \mathcal{A}: \\
+\quad \qquad \qquad q \leftarrow Q(s,a) \\
+\quad \qquad \qquad Q(s,a) \leftarrow \sum_{s', r} p(s', r \mid s, a) \left[ r + \gamma Q(s',\pi(s')) \right] \\
+\quad \qquad \qquad \Delta \leftarrow \max(\Delta, |q - Q(s)|) \\
+\quad \textbf{until } \Delta < \theta \text{ (a small positive number determining the accuracy of estimation)} \\
+\\
+\textbf{3. Policy Improvement} \\
+\quad \textit{policy-stable} \leftarrow \textit{true} \\
+\quad \textbf{For each } s \in \mathcal{S}: \\
+\qquad \textit{old-action} \leftarrow \pi(s) \\
+\qquad \pi(s) \leftarrow \underset{a}{\mathrm{argmax}}\ Q(s,a) \\
+\qquad \textbf{If } \textit{old-action} \neq \pi(s), \textbf{ then } \textit{policy-stable} \leftarrow \textit{false} \\
+\quad \textbf{If } \textit{policy-stable}, \textbf{ then stop and return } V \approx v_* \text{ and } \pi \approx \pi_*; \textbf{ else go to 2}
+\end{array}
+$$
+
+4.6:
+In 3 we would need some mechanism of assigning probabilities of selecting each action as opposed to taking a simply argmax. This might mean:
+- Greedy action $a^*=1-\epsilon+\frac{\epsilon}{|\mathcal{A}(s)|}$
+- Other actions $= \frac{\epsilon}{|\mathcal{A}(s)|}$
+
+In 2 when performing the value update we would need to consider each action, this would be a weighted average against the probabilities of each action being selected over the $r + \gamma V(s')$. I.e., $V(s)\leftarrow \sum_a \pi(a\mid s) \sum_{s',r} p(s',r\mid s, a)[r+\gamma V(s')]$ 
+
+
+In 1 the $\pi(s)$ assignment would need to obey the $\epsilon\text{-soft}$ requirement.
+
+4.7:
+Page 82

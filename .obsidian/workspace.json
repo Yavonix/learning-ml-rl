@@ -4,26 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "f4ae53798c8950eb",
+        "id": "afc4e80fc17fa8bd",
         "type": "tabs",
-        "dimension": 22.736842105263158,
         "children": [
           {
-            "id": "8736657ce369fbc0",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "rl-notes/note_taking/Part 1.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "Part 1"
-            }
-          },
-          {
-            "id": "1f97e014ff569250",
+            "id": "2ac71c6297824131",
             "type": "leaf",
             "state": {
               "type": "markdown",
@@ -35,31 +20,15 @@
               "icon": "lucide-file",
               "title": "Exercises"
             }
-          },
-          {
-            "id": "7ffa8bd671cddfb5",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "rl-notes/note_taking/RL Notes.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "RL Notes"
-            }
           }
-        ],
-        "currentTab": 1
+        ]
       },
       {
-        "id": "fdfbdbd42b2b66d1",
+        "id": "e79747058f5cfc4a",
         "type": "tabs",
-        "dimension": 77.26315789473685,
         "children": [
           {
-            "id": "684908af23723a57",
+            "id": "d83b27592d7e4019",
             "type": "leaf",
             "state": {
               "type": "markdown",
@@ -70,6 +39,20 @@
               },
               "icon": "lucide-file",
               "title": "Cheat sheet"
+            }
+          },
+          {
+            "id": "0edcbf98d7a09c57",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "rl-notes/note_taking/Part 1.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Part 1"
             }
           }
         ]
@@ -258,15 +241,16 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "684908af23723a57",
+  "active": "2ac71c6297824131",
   "lastOpenFiles": [
-    "rl-notes/note_taking/Exercises.md",
     "rl-notes/note_taking/Cheat sheet.md",
-    "rl-notes/note_taking/attachments/Cheat sheet 2.png",
+    "rl-notes/note_taking/Exercises.md",
+    "rl-notes/note_taking/Part 1.md",
     "rl-notes/note_taking/RL Notes.md",
+    "rl-notes/note_taking/attachments/Cheat sheet 3.png",
+    "rl-notes/note_taking/attachments/Cheat sheet 2.png",
     "rl-notes/note_taking/attachments/Cheat sheet 1.png",
     "rl-notes/note_taking/attachments/Cheat sheet.png",
-    "rl-notes/note_taking/Part 1.md",
     "rl-notes/note_taking/attachments/markov-decision-process-value-example.png",
     "rl-notes/note_taking/attachments/optimal-action-value-function-example.png",
     "rl-notes/note_taking/attachments/Exercises.png",
@@ -278,7 +262,6 @@
     "014 2802ICT Intelligent Systems/RL/images/markov-decision-process-value-example.png",
     "014 2802ICT Intelligent Systems/RL/images/markov-reward-process-filled.png",
     "014 2802ICT Intelligent Systems/RL/images/optimal-state-value-function-example.png",
-    "014 2802ICT Intelligent Systems/RL/images/markov-reward-process.png",
     "014 2802ICT Intelligent Systems/RL/images",
     "014 2802ICT Intelligent Systems/RL/attachments",
     "014 2802ICT Intelligent Systems/RL/Extracts/Chapter 2.pdf",
