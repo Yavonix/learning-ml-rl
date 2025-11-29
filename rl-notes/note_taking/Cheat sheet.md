@@ -249,17 +249,48 @@ $$
 \end{array}
 $$
 ```
-
-
-
-
-
-
 ## Value Iteration
-The *greedy choice is baked directly into the update rule*:
+Generally, beyond the first few iterations of policy evaluation, further iterations have no impact on the corresponding greedy policy. Therefore we could combine policy eval and policy improvement into one step.
+
+This algorithm is called *value iteration*: (4.10)
+$$
+\begin{align}
+v_{k+1}(s) &\doteq \max_{a} \mathbb{E}[R_{t+1} + \gamma v_k(S_{t+1}) \mid S_t=s, A_t=a] \\
+&= \max_{a} \sum_{s', r} p(s', r \mid s, a) [r + \gamma v_k(s')], \tag{4.10}
+\end{align}
+$$
+Equivalent action-value algorithm:
+$$
+q_{k+1}(s,a) \doteq \sum_{s',r} p(s',r \mid s,a) \cdot [r + \gamma \max_{a'} q_k(s', a')]
+$$
+
+*Value iteration algorithm*:
+$$
+\begin{array}{l}
+\textbf{Value Iteration, for estimating } \pi \approx \pi_* \\
+\textbf{Algorithm parameter: } \text{a small threshold } \theta > 0 \text{ determining accuracy of estimation} \\
+\textbf{Initialize } V(s), \text{ for all } s \in \mathcal{S}^+, \text{ arbitrarily except that } V(\mathrm{terminal}) = 0 \\
+\\
+\textbf{Loop:} \\
+\quad \Delta \leftarrow 0 \\
+\quad \textbf{Loop for each } s \in \mathcal{S}: \\
+\qquad v \leftarrow V(s) \\
+\qquad V(s) \leftarrow \max_a \sum_{s', r} p(s', r|s, a) \left[ r + \gamma V(s') \right] \\
+\qquad \Delta \leftarrow \max(\Delta, |v - V(s)|) \\
+\textbf{until } \Delta < \theta \\
+\\
+\text{Output a deterministic policy, } \pi \approx \pi_*, \text{ such that} \\
+\quad \pi(s) = \operatorname*{argmax}_a \sum_{s', r} p(s', r|s, a) \left[ r + \gamma V(s') \right]
+\end{array}
+$$
+
+We can interpose multiple policy evaluation sweeps between each policy improvement sweep to increase the speed of convergence. This takes the shape of replacing the value iteration sweep $V(s) \leftarrow \max_a \sum_{s',r} p(s',r|s,a)[r + \gamma V(s')]$ with  $V(s) \leftarrow \sum_{s',r} p(s',r|s,\pi(s))[r + \gamma V(s')]$. (Max is the only difference).
 
 
-No need for discrete policy improvement and evaluation steps.
+
+
+
+
 
 
 

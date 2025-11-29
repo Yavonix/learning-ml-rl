@@ -365,7 +365,7 @@ $$
 $$
 
 4.6:
-In 3 we would need some mechanism of assigning probabilities of selecting each action as opposed to taking a simply argmax. This might mean:
+In 3 we would need some mechanism of assigning probabilities of selecting each action as opposed to taking a simple argmax. This might mean:
 - Greedy action $a^*=1-\epsilon+\frac{\epsilon}{|\mathcal{A}(s)|}$
 - Other actions $= \frac{\epsilon}{|\mathcal{A}(s)|}$
 
@@ -375,4 +375,191 @@ In 2 when performing the value update we would need to consider each action, thi
 In 1 the $\pi(s)$ assignment would need to obey the $\epsilon\text{-soft}$ requirement.
 
 4.7:
-Page 82
+```python
+import math
+import numpy as np
+from scipy.stats import poisson
+
+
+np.set_printoptions(precision=1)
+
+
+print("Precomputing state transition probabilities...")
+
+max_cars = 21
+poisson_tail = 50
+
+transition_A = np.zeros((max_cars,max_cars))
+transition_B = np.zeros((max_cars,max_cars))
+expected_reward_A = np.zeros((max_cars)) # map starting number of cars to expected reward
+expected_reward_B = np.zeros((max_cars)) # map starting number of cars to expected reward
+
+pmf_map = {
+    3: [poisson.pmf(i, 3) for i in range(poisson_tail)],
+    4: [poisson.pmf(i, 4) for i in range(poisson_tail)],
+    2: [poisson.pmf(i, 2) for i in range(poisson_tail)]
+}
+
+for starting_cars in range(0, max_cars):
+    for returned_cars in range(0, poisson_tail):
+        for rented_cars in range(0, poisson_tail):
+            actual_rented = min(starting_cars, rented_cars)
+            final_cars = min(starting_cars + returned_cars - actual_rented, 20)
+
+            prob_A = pmf_map[3][rented_cars] * pmf_map[3][returned_cars]
+            prob_B = pmf_map[4][rented_cars] * pmf_map[2][returned_cars]
+
+            transition_A[starting_cars, final_cars] += prob_A
+            transition_B[starting_cars, final_cars] += prob_B
+
+            expected_reward_A[starting_cars] += prob_A * 10 * actual_rented
+            expected_reward_B[starting_cars] += prob_B * 10 * actual_rented
+
+print("Finshed...")
+
+def apply_action(action, state):
+    return tuple(np.clip((state[0] - action, state[1] + action), 0, 20))
+
+def compute_reward(values, action, state, gamma):
+    reward = 0
+    if action >= 0: # Move A -> B (limited by cars at A)
+        actual_move = min(action, state[0])
+        if actual_move > 0:
+            reward += 2 # One of Jack's employees will shuttle car for free.
+    else: # Move B -> A (limited by cars at B)
+        actual_move = -min(abs(action), state[1])
+    reward += -2*abs(actual_move)
+    next_direct_state = apply_action(actual_move, state)
+
+    if next_direct_state[0] > 10: reward -= 4
+    if next_direct_state[1] > 10: reward -= 4
+
+    reward += expected_reward_A[next_direct_state[0]] + expected_reward_B[next_direct_state[1]]
+
+    return reward + gamma * np.sum(np.outer(transition_A[next_direct_state[0], :], transition_B[next_direct_state[1], :]) * values)
+
+def eval_policy(values, policy, states, gamma, threshold):
+    while True:
+
+        delta = 0
+        for state in states:
+            old_value = values[state]
+            action = policy[state]
+            
+            values[state] = compute_reward(values, action, state, gamma)
+
+            delta = max(delta, abs(old_value-values[state]))
+
+        if delta < threshold:
+            return values
+        
+def improve_policy(values, policy, states, gamma):
+    policy_stable = True
+    for state in states:
+        old_action = policy[state]
+
+        min_action = -min(5, state[1]) # Can't move more from A than A has (max move is 5)
+        max_action = min(5, state[0]) # Only iterate over valid actions
+
+        best = (0,-math.inf)
+        for action in range(min_action, max_action + 1):
+            predicted_reward = compute_reward(values, action, state, gamma)
+            best = max(best, (action, predicted_reward), key=lambda x: x[1])
+
+        policy[state] = best[0]
+        if old_action != policy[state]: policy_stable = False
+    
+    return policy, policy_stable
+
+states = [(i//max_cars, i%max_cars) for i in range(max_cars*max_cars)]
+policy = np.zeros((max_cars,max_cars), dtype=int)
+values = np.zeros((max_cars,max_cars))
+
+gamma = 0.9
+
+stable = False
+
+while not stable:
+    values = eval_policy(values, policy, states, gamma, 0.001)
+    policy, stable = improve_policy(values, policy, states, gamma)
+
+print(policy)
+
+```
+
+4.8:
+It's mostly about protecting downside. At $50 we stake it all and have a 0.4 chance of winning. At $51 we can stake $1, maybe we win and we are in a better position, or we lose and we still have a second chance to win it all at $50.
+
+4.9:
+```python
+## Gambler's Problem
+
+import math
+import numpy as np
+import plotly.express as px
+
+states = np.arange(1,100) # [1, 99]
+values = np.zeros((101)) # [0, ..., 1]
+values[100] = 1
+threshold = 1e-30
+p_heads = 0.1
+
+def compute_reward(state, action, values, p_heads) -> float:
+    reward = 0
+    ## assume lost stake
+    new_amount = state-action
+    if (new_amount != 0): reward += (1-p_heads) * values[new_amount] 
+    ## assume win stake
+    new_amount = state+action
+    reward += p_heads * values[new_amount]
+
+    return reward
+
+
+while True:
+    delta = 0
+    for state in states:
+        old_value = values[state]
+
+        best = (0,-math.inf)
+        for action in range(0, min(state, 100-state)+1):
+            reward = compute_reward(state, action, values, p_heads)
+            best = max((action, reward), best, key=lambda x: x[1])
+        values[state] = best[1]
+
+        delta = max(abs(values[state] - old_value), delta)
+
+    if delta < threshold:
+        break
+
+## Extract policy
+
+policy = np.zeros_like(values)
+
+for state in states:
+    best = (0,-math.inf)
+    for action in range(1, min(state, 100-state)+1):
+        reward = compute_reward(state, action, values, p_heads)
+        reward = round(reward, 10)
+        best = max(best, (action, reward), key=lambda x: x[1])
+    policy[state] = best[0]
+
+fig = px.line(x=np.arange(0, 101), y=values)
+fig.add_bar(x=np.arange(0, 101), y=policy, name='policy', opacity=0.6, yaxis='y2')
+
+fig.update_layout(
+    yaxis=dict(title='value'),
+    yaxis2=dict(title='policy', overlaying='y', side='right', showgrid=False),
+    margin=dict(t=60)
+)
+
+fig.show()
+print(values)
+print(policy)
+```
+![[Exercises 1.png]]
+
+4.10:
+$$
+q_{k+1}(s,a) \doteq \sum_{s',r} p(s',r \mid s,a) \cdot [r + \gamma \max_{a'} q_k(s', a')]
+$$
