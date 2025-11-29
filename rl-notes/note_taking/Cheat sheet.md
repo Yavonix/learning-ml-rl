@@ -286,9 +286,24 @@ $$
 
 We can interpose multiple policy evaluation sweeps between each policy improvement sweep to increase the speed of convergence. This takes the shape of replacing the value iteration sweep $V(s) \leftarrow \max_a \sum_{s',r} p(s',r|s,a)[r + \gamma V(s')]$ with  $V(s) \leftarrow \sum_{s',r} p(s',r|s,\pi(s))[r + \gamma V(s')]$. (Max is the only difference).
 
+## Asynchronous Dynamic Programming
+Asynchronous DP algorithms can update the values of states in any order whatsoever, using whatever values of other states happen to be available.
+- Some states may be updated several times before others
+- For convergence all states must be updated.
 
+There exists orderings where convergence does not occur (apparently easy to avoid these.. idk)
 
+We can also:
+- Select states such that applying updates improves the algos rate of progress.
+- Order updates to optimise information propagation.
+- Avoid updating unnecessary state (explored in 8)
+- There's also a bit on intermixing with real-time interaction in the chapter.
 
+## Generalised Policy Iteration
+GPI refers to the general idea of letting policy-evaluation and policy-improvement interact. To recap:
+- Value iteration: $V(s) \leftarrow \max_a \sum_{s',r} p(s',r|s,a)[r + \gamma V(s')]$
+- Policy evaluation: $V(s) \leftarrow \sum_{s',r} p(s',r|s,\pi(s))[r + \gamma V(s')]$
+- Policy improvement: $\pi(s) \doteq \underset{a}{\mathrm{argmax}} \sum_{s', r} p(s', r|s, a) \left[ r + \gamma v_{\pi}(s') \right]$
 
 
 
