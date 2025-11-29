@@ -37,20 +37,28 @@ for starting_cars in range(0, max_cars):
             expected_reward_A[starting_cars] += prob_A * 10 * actual_rented
             expected_reward_B[starting_cars] += prob_B * 10 * actual_rented
 
+print("Finshed...")
+
 def apply_action(action, state):
     return tuple(np.clip((state[0] - action, state[1] + action), 0, 20))
 
 def compute_reward(values, action, state, gamma):
+    reward = 0
     if action >= 0: # Move A -> B (limited by cars at A)
         actual_move = min(action, state[0])
+        if actual_move > 0:
+            reward += 2 # One of Jack's employees will shuttle car for free.
     else: # Move B -> A (limited by cars at B)
         actual_move = -min(abs(action), state[1])
-    reward = -2*abs(actual_move)
+    reward += -2*abs(actual_move)
     next_direct_state = apply_action(actual_move, state)
+
+    if next_direct_state[0] > 10: reward -= 4
+    if next_direct_state[1] > 10: reward -= 4
+
     reward += expected_reward_A[next_direct_state[0]] + expected_reward_B[next_direct_state[1]]
 
     return reward + gamma * np.sum(np.outer(transition_A[next_direct_state[0], :], transition_B[next_direct_state[1], :]) * values)
-
 
 def eval_policy(values, policy, states, gamma, threshold):
     while True:
