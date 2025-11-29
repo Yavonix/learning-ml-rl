@@ -40,6 +40,18 @@ for starting_cars in range(0, max_cars):
 def apply_action(action, state):
     return tuple(np.clip((state[0] - action, state[1] + action), 0, 20))
 
+def compute_reward(values, action, state, gamma):
+    if action >= 0: # Move A -> B (limited by cars at A)
+        actual_move = min(action, state[0])
+    else: # Move B -> A (limited by cars at B)
+        actual_move = -min(abs(action), state[1])
+    reward = -2*abs(actual_move)
+    next_direct_state = apply_action(actual_move, state)
+    reward += expected_reward_A[next_direct_state[0]] + expected_reward_B[next_direct_state[1]]
+
+    return reward + gamma * np.sum(np.outer(transition_A[next_direct_state[0], :], transition_B[next_direct_state[1], :]) * values)
+
+
 def eval_policy(values, policy, states, gamma, threshold):
     while True:
 
@@ -47,35 +59,25 @@ def eval_policy(values, policy, states, gamma, threshold):
         for state in states:
             old_value = values[state]
             action = policy[state]
-            if action >= 0: # Move A -> B (limited by cars at A)
-                actual_move = min(action, state[0])
-            else: # Move B -> A (limited by cars at B)
-                actual_move = -min(abs(action), state[1])
-            reward = -2*abs(actual_move)
-            next_direct_state = apply_action(actual_move, state)
-            reward += expected_reward_A[next_direct_state[0]] + expected_reward_B[next_direct_state[1]]
-            values[state] = reward + gamma * np.sum(np.outer(transition_A[next_direct_state[0], :], transition_B[next_direct_state[1], :]) * values)
+            
+            values[state] = compute_reward(values, action, state, gamma)
 
             delta = max(delta, abs(old_value-values[state]))
 
         if delta < threshold:
             return values
         
-def improve_policy(values, policy, states, actions, gamma):
+def improve_policy(values, policy, states, gamma):
     policy_stable = True
     for state in states:
         old_action = policy[state]
 
+        min_action = -min(5, state[1]) # Can't move more from A than A has (max move is 5)
+        max_action = min(5, state[0]) # Only iterate over valid actions
+
         best = (0,-math.inf)
-        for action in actions:
-            if action >= 0: # Move A -> B (limited by cars at A)
-                actual_move = min(action, state[0])
-            else: # Move B -> A (limited by cars at B)
-                actual_move = -min(abs(action), state[1])
-            reward = -2*abs(actual_move)
-            next_direct_state = apply_action(actual_move, state)
-            reward += expected_reward_A[next_direct_state[0]] + expected_reward_B[next_direct_state[1]]
-            predicted_reward = reward + gamma * np.sum(np.outer(transition_A[next_direct_state[0], :], transition_B[next_direct_state[1], :]) * values)
+        for action in range(min_action, max_action + 1):
+            predicted_reward = compute_reward(values, action, state, gamma)
             best = max(best, (action, predicted_reward), key=lambda x: x[1])
 
         policy[state] = best[0]
@@ -86,7 +88,6 @@ def improve_policy(values, policy, states, actions, gamma):
 states = [(i//max_cars, i%max_cars) for i in range(max_cars*max_cars)]
 policy = np.zeros((max_cars,max_cars), dtype=int)
 values = np.zeros((max_cars,max_cars))
-actions = list(range(-5,6))
 
 gamma = 0.9
 
@@ -94,7 +95,6 @@ stable = False
 
 while not stable:
     values = eval_policy(values, policy, states, gamma, 0.001)
-    print("complete eval")
-    policy, stable = improve_policy(values, policy, states, actions, gamma)
-    print(policy)
-    print("complete pol")
+    policy, stable = improve_policy(values, policy, states, gamma)
+
+print(policy)
