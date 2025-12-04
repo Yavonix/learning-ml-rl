@@ -307,6 +307,89 @@ GPI refers to the general idea of letting policy-evaluation and policy-improveme
 
 
 
+# Ch 5 Monte Carlo Methods
+Refers to methods that average complete returns, while Temporal Difference learning can learn from partial returns.
+
+Unlike Dynamic Programming approaches, Monte Carlo methods require only *experience*, not complete knowledge of the environment.
+
+Learning from *simulated* experience is also possible. Where compared to DP, this does not require complete probability distributions of all possible transitions.
+
+We define Monte Carlo methods only for episodic tasks.
+
+$$
+\begin{array}{l} \textbf{First-visit MC prediction, for estimating } V \approx v_{\pi} \\ \\ \textbf{Input: } \text{a policy } \pi \text{ to be evaluated} \\ \textbf{Initialize:} \\ \quad V(s) \in \mathbb{R}, \text{ arbitrarily, for all } s \in \mathcal{S} \\ \quad Returns(s) \leftarrow \text{an empty list, for all } s \in \mathcal{S} \\ \\ \textbf{Loop forever } (\text{for each episode}): \\ \quad \text{Generate an episode following } \pi: S_0, A_0, R_1, S_1, A_1, R_2, \dots, S_{T-1}, A_{T-1}, R_T \\ \quad G \leftarrow 0 \\ \quad \textbf{Loop for each step of episode, } t = T-1, T-2, \dots, 0: \\ \qquad G \leftarrow \gamma G + R_{t+1} \\ \qquad \textbf{Unless } S_t \text{ appears in } S_0, S_1, \dots, S_{t-1}: \\ \qquad \quad \text{Append } G \text{ to } Returns(S_t) \\ \qquad \quad V(S_t) \leftarrow \text{average}(Returns(S_t)) \end{array}
+$$
+## Blackjack
+
+- Goal to get score higher than dealer without bust.
+- Highest possible score is $21$.
+- *Bust* is $\gt21$.
+- *Natural* is $21$ (ace and 10-card) immediately, player wins.
+
+Scoring:
+- 1 through 10 are face value.
+- Jack, King, Queen are 10
+- Ace are 1 or 11.
+
+Dealer:
+- 16 or under: have to take another card.
+- 17 or higher: have to stay with their hand.
+
+Player:
+- *Hit*: request additional cards
+- *Sticks*: stops
+
+State space:
+- If we have a *usable* ace, it is always counted.
+- If we sum to $\le11$ we always hit.
+- Therefore we have:
+	- Player sum: \[12-21\]
+	- Usable ace: (yes/no)
+	- Dealer's card: ace, \[2-10\]
+
+## Summary of Advantages
+
+*Learning from Actual Experience*: It is possible to determine optimal behavior using only sample sequences (experience) without requiring any prior knowledge of the environment's dynamics.
+*Learning from Simulated Experience:* The model just needs to generate sample transitions, avoiding the need to calculate complete probability distributions.
+*Targeted Estimation:* The computational cost of estimating the value of a single state is independent of the total number of states, allowing you to focus only on a specific subset of states if needed.
+
+## Without a Model
+
+Without a model state-values are insufficient are unable to step one time step forward and choose the best combination of reward and next state. Therefore we must estimate action-values.
+
+The only complications is that many action-pairs may not be visited. For instance, if $\pi$ is a deterministic policy, then only one state-action will be explored by the policy.
+
+Solution one: use *exploring starts*, where we guarantee that episodes start in a state-action pair and that every pair has a nonzero probability of being selected at the start.
+
+Solution two: only consider policies that are *stochastic*, with nonzero probability of selecting all actions in each state.
+
+## Monte Carlo Control
+The process to create approximate optimal policies.
+
+Assuming infinite episodes and exploring starts, the Monte Carlo methods will compute $q_{\pi_{k}}$ exactly for arbitrary $\pi_k$.
+
+Given we have action-values, we do not need a model and the policy can be as simple as:
+$$
+\pi(s) \doteq \text{arg}\max_a q(s,a) \tag{5.1}
+$$
+Policy improvement is then done by constructing $\pi_{k+1}$ as the greedy policy with respect to $q_{\pi_k}$. 
+
+In practice we may require a large number of episodes to adequately approximate $q_{\pi_k}$, this is mitigated by either:
+- Keep track on magnitude and probability of error in estimates, and just keep estimating until they are small enough.
+- Give up on completing *policy evaluation* before moving to *policy improvement*. (Like in the previous chapter, where the extreme form of this was value iteration).
+
+For Monte Carlo policy iteration is it natural to perform policy evaluation after each episode, and then perform policy improvement for all states visited in the episode. The pseudocode for such an algorithm, called Monte Carlo Exploring Starts (Monte Carlo ES) is below:
+$$
+\begin{array}{l} \textbf{Monte Carlo ES (Exploring Starts), for estimating } \pi \approx \pi_* \\ \\ \textbf{Initialize:} \\ \quad \pi(s) \in \mathcal{A}(s) \text{ (arbitrarily), for all } s \in \mathcal{S} \\ \quad Q(s, a) \in \mathbb{R} \text{ (arbitrarily), for all } s \in \mathcal{S}, a \in \mathcal{A}(s) \\ \quad Returns(s, a) \leftarrow \text{empty list, for all } s \in \mathcal{S}, a \in \mathcal{A}(s) \\ \\ \textbf{Loop forever (for each episode):} \\ \quad \text{Choose } S_0 \in \mathcal{S}, A_0 \in \mathcal{A}(S_0) \text{ randomly such that all pairs have probability } > 0 \\ \quad \text{Generate an episode from } S_0, A_0, \text{ following } \pi: S_0, A_0, R_1, \dots, S_{T-1}, A_{T-1}, R_T \\ \quad G \leftarrow 0 \\ \quad \textbf{Loop for each step of episode, } t = T-1, T-2, \dots, 0: \\ \qquad G \leftarrow \gamma G + R_{t+1} \\ \qquad \text{Unless the pair } S_t, A_t \text{ appears in } S_0, A_0, S_1, A_1 \dots, S_{t-1}, A_{t-1}: \\ \qquad \quad \text{Append } G \text{ to } Returns(S_t, A_t) \\ \qquad \quad Q(S_t, A_t) \leftarrow \text{average}(Returns(S_t, A_t)) \\ \qquad \quad \pi(S_t) \leftarrow \operatorname{argmax}_a Q(S_t, a) \end{array}
+$$
+
+
+
+Up to 5.4
+
+
+
+
 
 
 
@@ -329,3 +412,8 @@ $$v_* = \max_\pi v_\pi (s)$$
 
 **Optimal action value** function the maximum action value function over all policies:
 $$ q_* (s,a) = \max_\pi q_\pi(s,a)$$
+
+
+
+
+

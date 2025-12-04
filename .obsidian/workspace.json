@@ -22,7 +22,7 @@
             }
           },
           {
-            "id": "0edcbf98d7a09c57",
+            "id": "c7834f9d0eb04cf7",
             "type": "leaf",
             "state": {
               "type": "markdown",
@@ -223,11 +223,11 @@
   },
   "active": "d83b27592d7e4019",
   "lastOpenFiles": [
+    "rl-notes/note_taking/Exercises.md",
+    "rl-notes/note_taking/Cheat sheet.md",
     "rl-notes/code_exercises/exercise_4.9.ipynb",
     "rl-notes/code_exercises/exercise_4.7.py",
-    "rl-notes/note_taking/Exercises.md",
     "rl-notes/note_taking/attachments/Exercises 1.png",
-    "rl-notes/note_taking/Cheat sheet.md",
     "rl-notes/note_taking/Part 1.md",
     "rl-notes/note_taking/RL Notes.md",
     "rl-notes/note_taking/attachments/Cheat sheet 3.png",
@@ -253,7 +253,6 @@
     "014 2802ICT Intelligent Systems/RL",
     "014 2802ICT Intelligent Systems/Slides/1-4.pdf",
     "014 2802ICT Intelligent Systems/Lab 03/Workshop Week 4_CSP.pdf",
-    "014 2802ICT Intelligent Systems/Lab 02/Workshop Week 3.pdf",
     "014 2802ICT Intelligent Systems/Notes 5.md",
     "014 2802ICT Intelligent Systems/Not.md",
     "014 2802ICT Intelligent Systems/Notes 2-4.md",

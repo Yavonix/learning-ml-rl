@@ -557,9 +557,20 @@ fig.show()
 print(values)
 print(policy)
 ```
-![[Exercises 1.png]]
+![[Exercises 1.png|center]]
 
 4.10:
 $$
 q_{k+1}(s,a) \doteq \sum_{s',r} p(s',r \mid s,a) \cdot [r + \gamma \max_{a'} q_k(s', a')]
 $$
+5.1:
+The evaluated policy only sticks on the last two rows. With other rows sticking has a high chance of ending the game in a loss. The value function drops off for the whole last row on the left because the dealer has a higher chance of winning, as the dealer as the ace, if when the dealer hits they go over, they can simply count their ace as 1. The frontmost values are higher in the upper diagram because the usable ace is an insurance policy against going over as it can be counted as 1.
+
+5.2:
+We never return to the same state, therefore every-visit MC will be the same.
+
+5.3:
+Start with action not state.
+
+5.4:
+This is just referring to using the online mean formula. Returns(s,a) would be a pair of real numbers for all s and a. The update would then be performed as $w_{k+1} \leftarrow w_k + \frac{(\text{new\_value} - w_k)}{n}$.  
