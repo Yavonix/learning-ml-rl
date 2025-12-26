@@ -363,10 +363,10 @@ Solution one: use *exploring starts*, where we guarantee that episodes start in 
 
 Solution two: only consider policies that are *stochastic*, with nonzero probability of selecting all actions in each state.
 
-## Monte Carlo Control
+## Monte Carlo Control (Assuming Exploring Starts)
 The process to create approximate optimal policies.
 
-Assuming infinite episodes and exploring starts, the Monte Carlo methods will compute $q_{\pi_{k}}$ exactly for arbitrary $\pi_k$.
+**Assuming infinite episodes and exploring starts**, the Monte Carlo methods will compute $q_{\pi_{k}}$ exactly for arbitrary $\pi_k$.
 
 Given we have action-values, we do not need a model and the policy can be as simple as:
 $$
@@ -383,9 +383,96 @@ $$
 \begin{array}{l} \textbf{Monte Carlo ES (Exploring Starts), for estimating } \pi \approx \pi_* \\ \\ \textbf{Initialize:} \\ \quad \pi(s) \in \mathcal{A}(s) \text{ (arbitrarily), for all } s \in \mathcal{S} \\ \quad Q(s, a) \in \mathbb{R} \text{ (arbitrarily), for all } s \in \mathcal{S}, a \in \mathcal{A}(s) \\ \quad Returns(s, a) \leftarrow \text{empty list, for all } s \in \mathcal{S}, a \in \mathcal{A}(s) \\ \\ \textbf{Loop forever (for each episode):} \\ \quad \text{Choose } S_0 \in \mathcal{S}, A_0 \in \mathcal{A}(S_0) \text{ randomly such that all pairs have probability } > 0 \\ \quad \text{Generate an episode from } S_0, A_0, \text{ following } \pi: S_0, A_0, R_1, \dots, S_{T-1}, A_{T-1}, R_T \\ \quad G \leftarrow 0 \\ \quad \textbf{Loop for each step of episode, } t = T-1, T-2, \dots, 0: \\ \qquad G \leftarrow \gamma G + R_{t+1} \\ \qquad \text{Unless the pair } S_t, A_t \text{ appears in } S_0, A_0, S_1, A_1 \dots, S_{t-1}, A_{t-1}: \\ \qquad \quad \text{Append } G \text{ to } Returns(S_t, A_t) \\ \qquad \quad Q(S_t, A_t) \leftarrow \text{average}(Returns(S_t, A_t)) \\ \qquad \quad \pi(S_t) \leftarrow \operatorname{argmax}_a Q(S_t, a) \end{array}
 $$
 
+## Monte Carlo Control (Without Assuming Exploring Starts)
 
+To avoid the assumption of exploring starts is to somehow guarantee the agent will select all actions. This is done in two ways:
 
-Up to 5.4
+*On-policy* $\rightarrow$ evaluate/improve the policy used to make decisions.
+*Off-policy* $\rightarrow$ evaluate/improve a policy different than that used to generate the different.
+### On-Policy
+The policy starts soft, (i.e. $\pi(a \mid s) > 0$ for all $a$ and $s$) but gradually shifts to be deterministic.
+- $\epsilon$-greedy
+	- With probability $\epsilon$ choose action at random: $P(a) = \frac{\epsilon}{|\mathcal{A}(s)|}$
+	- With probability $1-\epsilon$ choose optimal action: $P(a^*) = 1-\epsilon + \frac{\epsilon}{|\mathcal{A}(s)|}$.
+	- Therefore $\pi(a\mid s)>\frac{\epsilon}{|\mathcal{A}(s)|}$ for all $s$ and $a$ for some $\epsilon>0$.
+
+$$\begin{array}{l} \textbf{On-policy first-visit MC control (for } \varepsilon\textbf{-soft policies), estimates } \pi \approx \pi_* \\ \text{Algorithm parameter: small } \varepsilon > 0 \\ \textbf{Initialize:} \\ \quad \pi \leftarrow \text{an arbitrary } \varepsilon\text{-soft policy} \\ \quad Q(s, a) \in \mathbb{R} \text{ (arbitrarily), for all } s \in \mathcal{S}, a \in \mathcal{A}(s) \\ \quad Returns(s, a) \leftarrow \text{empty list, for all } s \in \mathcal{S}, a \in \mathcal{A}(s) \\ \\ \textbf{Repeat forever (for each episode):} \\ \quad \text{Generate an episode following } \pi: S_0, A_0, R_1, \dots, S_{T-1}, A_{T-1}, R_T \\ \quad G \leftarrow 0 \\ \quad \textbf{Loop for each step of episode, } t = T-1, T-2, \dots, 0: \\ \qquad G \leftarrow \gamma G + R_{t+1} \\ \qquad \text{Unless the pair } S_t, A_t \text{ appears in } S_0, A_0, S_1, A_1 \dots, S_{t-1}, A_{t-1}: \\ \qquad \quad \text{Append } G \text{ to } Returns(S_t, A_t) \\ \qquad \quad Q(S_t, A_t) \leftarrow \text{average}(Returns(S_t, A_t)) \\ \qquad \quad A^* \leftarrow \operatorname{argmax}_a Q(S_t, a) \qquad \qquad \text{(with ties broken arbitrarily)} \\ \qquad \quad \text{For all } a \in \mathcal{A}(S_t): \\ \qquad \qquad \pi(a|S_t) \leftarrow \begin{cases} 1 - \varepsilon + \varepsilon/|\mathcal{A}(S_t)| & \text{if } a = A^* \\ \varepsilon/|\mathcal{A}(S_t)| & \text{if } a \neq A^* \end{cases} \end{array}$$
+
+*Showing how epsilon-greedy policy GPI converges to the optimal epsilon-greedy policy*:
+
+Any $\epsilon$-greedy policy with respect to $q_\pi$ is an improvement over any $\epsilon$-soft policy $\pi$ is shown by the policy improvement theorem. Let $\pi'$ be the $\epsilon$-greedy policy:
+$$
+\begin{align} q_{\pi}(s, \pi'(s)) &= \sum_{a} \pi'(a|s) q_{\pi}(s, a) \\ &= \frac{\varepsilon}{|\mathcal{A}(s)|} \sum_{a} q_{\pi}(s, a) + (1 - \varepsilon) \max_{a} q_{\pi}(s, a) \tag{5.2} \\ &\geq \frac{\varepsilon}{|\mathcal{A}(s)|} \sum_{a} q_{\pi}(s, a) + (1 - \varepsilon) \sum_{a} \frac{\pi(a|s) - \frac{\varepsilon}{|\mathcal{A}(s)|}}{1 - \varepsilon} q_{\pi}(s, a) \\  &= \frac{\varepsilon}{|\mathcal{A}(s)|} \sum_{a} q_{\pi}(s, a) - \frac{\varepsilon}{|\mathcal{A}(s)|} \sum_{a} q_{\pi}(s, a) + \sum_{a} \pi(a|s) q_{\pi}(s, a) \\ &= v_{\pi}(s). \end{align}
+$$
+We can show that the $\epsilon$-greedy policy converges to be optimal by considering an environment which is "optimal" $1-\epsilon$ of the time, then we denote $\tilde{v}_*$ and $\tilde{q}_*$.
+
+Then $\tilde{v}_*$ is equal to:
+$$
+\begin{align}
+\tilde{v}_*(s) &= (1 - \varepsilon) \max_a \tilde{q}_*(s, a) + \frac{\varepsilon}{|\mathcal{A}(s)|} \sum_a \tilde{q}_*(s, a) \\
+&= (1 - \varepsilon) \max_a \sum_{s', r} p(s', r \mid s, a) \left[ r + \gamma \tilde{v}_*(s') \right] \\
+&\quad + \frac{\varepsilon}{|\mathcal{A}(s)|} \sum_a \sum_{s', r} p(s', r \mid s, a) \left[ r + \gamma \tilde{v}_*(s') \right].
+\end{align}
+$$
+When equality holds and the $\epsilon$-soft policy is no longer improved, then we also know from (5.2):
+$$
+\begin{align}
+v_{\pi}(s) &= (1 - \varepsilon) \max_a q_{\pi}(s, a) + \frac{\varepsilon}{|\mathcal{A}(s)|} \sum_a q_{\pi}(s, a) \\
+&= (1 - \varepsilon) \max_a \sum_{s', r} p(s', r \mid s, a) \left[ r + \gamma v_{\pi}(s') \right] \\
+&\quad + \frac{\varepsilon}{|\mathcal{A}(s)|} \sum_a \sum_{s', r} p(s', r \mid s, a) \left[ r + \gamma v_{\pi}(s') \right].
+\end{align}
+$$
+This equation is the same as the original one except for the substitution of $v_\pi$ for $\tilde{v}_*$. Because $\tilde{v}_*$ is the unique solution, it must be that $v_\pi=\tilde{v}_*$.
+
+### Off-Policy
+
+Policy being learned about is the *target policy*.
+The policy used to generate behavior is the *behavior policy*.
+
+On policy learning can be thought of as a special case of off policy learning where the target and behavior policies are the same.
+
+The assumption of *coverage* assumes that every action for the target policy ($\pi$) is also taken, at least occasionally under the behaviour policy ($b$) ($\pi(a\mid s) > 0$ implies $b(a\mid s)>0$). It follows that $b$ must be stochastic in states where it is not identical to $\pi$.
+
+The target policy is typically the deterministic greedy policy with respect to the current estimate of the action-value function.
+
+So.. How do we compute value functions and action value function for our policy $\pi$ given episodes from another policy $b$?
+
+Given a policy $\pi$, the probability of a specific episode is given by:
+$$
+\begin{aligned}
+\operatorname{Pr}\{A_t, S_{t+1}, A_{t+1}, \dots, S_T \mid S_t, A_{t:T-1} \sim \pi\} 
+&= \pi(A_t|S_t)p(S_{t+1}|S_t, A_t)\pi(A_{t+1}|S_{t+1})\cdots p(S_T|S_{T-1}, A_{T-1}) \\
+&= \prod_{k=t}^{T-1} \pi(A_k|S_k)p(S_{k+1}|S_k, A_k),
+\end{aligned}
+$$
+ Thus the relative importance of a trajectory under *target* and *behaviour* policies is:
+ $$
+ \rho_{t:T-1} \doteq \frac{\prod_{k=t}^{T-1} \pi(A_k|S_k)p(S_{k+1}|S_k, A_k)}{\prod_{k=t}^{T-1} b(A_k|S_k)p(S_{k+1}|S_k, A_k)} = \prod_{k=t}^{T-1} \frac{\pi(A_k|S_k)}{b(A_k|S_k)}. \tag{5.3}
+ $$
+
+We can use this to determine the value function for $\pi$ given an episode from $b$:
+$$
+\mathbb{E}[\rho_{t:T-1} \mid S_t = s] = v_{\pi}(s)
+$$
+
+**Ordinary Importance Sampling**: Determine value function for a policy using a different policy:
+$$
+V(s) \doteq \frac{\sum_{t \in \mathcal{T}(s)} \rho_{t:T(t)-1} G_t}{|\mathcal{T}(s)|} \tag{5.5}
+$$
+$$
+Q(s,a) \doteq \frac{\sum_{t \in \mathcal{T}(s,a)} \rho_{t+1:T(t)-1} G_t}{|\mathcal{T}(s,a)|}
+$$
+
+**Weighted Importance Sampling**: Uses a weighted average instead:
+$$
+V(s) \doteq \frac{\sum_{t \in \mathcal{T}(s)} \rho_{t:T(t)-1} G_t}{\sum_{t \in \mathcal{T}(s)} \rho_{t:T(t)-1}} \tag{5.6}
+$$
+$$
+Q(s,a) \doteq \frac{\sum_{t \in \mathcal{T}(s,a)} \rho_{t+1:T(t)-1} G_t}{\sum_{t \in \mathcal{T}(s,a)} \rho_{t+1:T(t)-1}}
+$$
+So just to recap. We are still performing GPI with our target policy $\pi$, just when we are going through the evaluation step, we use episodes generated by another policy $b$ and scale the returns such that it fits our target policy $\pi$.
+
+Ordinary importance sampling is unbiased with high variance. Weighted importance sampling is biased with low variance. The weighted importance sampling is generally strongly preferred.
 
 
 

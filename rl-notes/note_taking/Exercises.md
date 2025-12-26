@@ -574,3 +574,6 @@ Start with action not state.
 
 5.4:
 This is just referring to using the online mean formula. Returns(s,a) would be a pair of real numbers for all s and a. The update would then be performed as $w_{k+1} \leftarrow w_k + \frac{(\text{new\_value} - w_k)}{n}$.  
+
+5.5:
+First visit value = 10. Every visit value = $\frac{10+9+8+7+6+5+4+3+2+1}{10}=5.5$.
