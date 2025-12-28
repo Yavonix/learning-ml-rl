@@ -16,7 +16,7 @@ From this we can derive:
 ## Return and Reward
 If the sequence of rewards received after time step t is denoted
 $R_{t+1}, R_{t+2}, R_{t+3}, \dots$ then **return** over an **episode** is defined by: (3.7)
-$$G_t \doteq R_{t+1}, R_{t+2}, R_{t+3}, \dots, R_T \tag{3.7}$$
+$$G_t \doteq R_{t+1} + R_{t+2} + R_{t+3} + \dots+ R_T \tag{3.7}$$
 For an **episodic task** to end we need a special **terminal state**, we update our set definitions as:
 - $\mathcal{S}$ all states
 - $\mathcal{S}^+$ all states including the **terminal state**
@@ -425,6 +425,10 @@ $$
 This equation is the same as the original one except for the substitution of $v_\pi$ for $\tilde{v}_*$. Because $\tilde{v}_*$ is the unique solution, it must be that $v_\pi=\tilde{v}_*$.
 
 ### Off-Policy
+*Important Notation*
+- (every visit) $\mathcal{T}(s)$ the set of all time steps in which state $s$ is visited.
+- (first visit) $\mathcal{T}(s)$ the set of all time steps in which state $s$ is first visited for all episodes.
+
 
 Policy being learned about is the *target policy*.
 The policy used to generate behavior is the *behavior policy*.
@@ -452,8 +456,10 @@ $$
 
 We can use this to determine the value function for $\pi$ given an episode from $b$:
 $$
-\mathbb{E}[\rho_{t:T-1} \mid S_t = s] = v_{\pi}(s)
+\mathbb{E}[\rho_{t:T-1} G_t\mid S_t = s] = v_{\pi}(s)
 $$
+
+[This is a good video on importance sampling](https://youtu.be/C3p2wI4RAi8?si=q-cvU5tkuueY7QAl).
 
 **Ordinary Importance Sampling**: Determine value function for a policy using a different policy:
 $$

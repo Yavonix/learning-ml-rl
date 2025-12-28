@@ -35,7 +35,8 @@
               "title": "Exercises"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -221,11 +222,11 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "d83b27592d7e4019",
+  "active": "c7834f9d0eb04cf7",
   "lastOpenFiles": [
-    "rl-notes/note_taking/Part 1.md",
-    "rl-notes/note_taking/Exercises.md",
     "rl-notes/note_taking/Cheat sheet.md",
+    "rl-notes/note_taking/Exercises.md",
+    "rl-notes/note_taking/Part 1.md",
     "rl-notes/code_exercises/exercise_4.9.ipynb",
     "rl-notes/code_exercises/exercise_4.7.py",
     "rl-notes/note_taking/attachments/Exercises 1.png",
