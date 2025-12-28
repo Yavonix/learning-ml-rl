@@ -577,3 +577,33 @@ This is just referring to using the online mean formula. Returns(s,a) would be a
 
 5.5:
 First visit value = 10. Every visit value = $\frac{10+9+8+7+6+5+4+3+2+1}{10}=5.5$.
+
+5.6:
+$$
+Q(s,a) \doteq \frac{\sum_{t\in\mathcal{T}(s,a)} \rho_{t+1:T(t)-1} G_t}{\sum_{t\in\mathcal{T}(s,a)} \rho_{t+1:T(t)-1} }
+$$
+
+5.7:
+For the first few times a state is visited it takes on a value closer to the return under the behaviour policy as the weighted average cancels itself out.
+
+5.8:
+$$
+\begin{align}
+&= \frac{1}{2} \cdot 0.1 \left( \frac{1}{0.5} \right)^2 \cdot 1 \\
+&+ \ \frac{1}{2} \cdot 0.9 \cdot \frac{1}{2} \cdot 0.1 \left( \frac{1}{0.5} \cdot \frac{1}{0.5} \right)^2 \cdot \frac{0+1}{2} \\
+&+ \ \frac{1}{2} \cdot 0.9 \cdot \frac{1}{2} \cdot 0.9 \cdot \frac{1}{2} \cdot 0.1 \left( \frac{1}{0.5} \cdot \frac{1}{0.5} \cdot \frac{1}{0.5} \right)^2 \cdot \frac{0+0+1}{3} \dots \\
+&= 0.1 \cdot \sum_{k=0}^{\infty} 0.9^k \cdot 2^k \cdot 2 \cdot \frac{1}{k+1} \\
+&= 0.2 \cdot \sum_{k=0}^{\infty} 1.8^k \cdot \frac{1}{k+1}
+\end{align}
+$$
+
+Variance is still infinite.
+
+5.9:
+$$\begin{array}{l} \textbf{Incremental First-visit MC policy evaluation, for estimating } V \approx v_\pi \\ \textbf{Input: } \text{a policy } \pi \text{ to be evaluated} \\ \textbf{Initialize:} \\ \quad V(s) \in \mathbb{R}, \text{ arbitrarily for all } s \in \mathcal{S} \\ \quad N(s) \in \mathbb{N}_0, \text{ 0 for all } s \in \mathcal{S} \\ \\ \textbf{Loop forever (for each episode):} \\ \quad \text{Generate an episode following } \pi: S_0, A_0, R_1, S_1, A_1, R_2, \dots, S_{T-1}, A_{T-1}, R_T \\ \quad G \leftarrow 0 \\ \quad \textbf{Loop for each step of episode, } t = T-1, T-2, \dots, 0: \\ \qquad G \leftarrow \gamma G + R_{t+1} \\ \qquad \text{Unless } S_t \text{ appears in } S_0, S_1, \dots, S_{t-1}: \\ \qquad \quad N(S_t) \leftarrow N(S_t) + 1 \\ \qquad \quad V(S_t) \leftarrow V(S_t) + \frac{1}{N(S_t)} (G - V(S_t)) \end{array}$$
+
+5.10:
+$$
+\begin{align} V_n - V_{n-1} &= \frac{\sum_{k=1}^{n-1} W_k G_k}{\sum_{k=1}^{n-1} W_k} - \frac{\sum_{k=1}^{n-2} W_k G_k}{\sum_{k=1}^{n-2} W_k} \\ &= \frac{\left(\sum_{k=1}^{n-2} W_k\right) \left(\sum_{k=1}^{n-1} W_k G_k\right) - \left(\sum_{k=1}^{n-1} W_k\right) \left(\sum_{k=1}^{n-2} W_k G_k\right)}{\left(\sum_{k=1}^{n-1} W_k\right) \left(\sum_{k=1}^{n-2} W_k\right)} \\ &= \frac{\left(\sum_{k=1}^{n-2} W_k\right) \left(\sum_{k=1}^{n-2} W_k G_k + W_{n-1} G_{n-1}\right) - \left(\sum_{k=1}^{n-2} W_k + W_{n-1}\right) \left(\sum_{k=1}^{n-2} W_k G_k\right)}{\left(\sum_{k=1}^{n-1} W_k\right) \left(\sum_{k=1}^{n-2} W_k\right)} \\ &= \frac{\sum_{k=1}^{n-2} W_k \sum_{k=1}^{n-2} W_k G_k + \sum_{k=1}^{n-2} W_k (W_{n-1} G_{n-1}) - \sum_{k=1}^{n-2} W_k \sum_{k=1}^{n-2} W_k G_k - W_{n-1} \sum_{k=1}^{n-2} W_k G_k}{\left(\sum_{k=1}^{n-1} W_k\right) \left(\sum_{k=1}^{n-2} W_k\right)} \\ &= \frac{W_{n-1} \left( \sum_{k=1}^{n-2} W_k \right) G_{n-1} - W_{n-1} \sum_{k=1}^{n-2} W_k G_k}{\left(\sum_{k=1}^{n-1} W_k\right) \left(\sum_{k=1}^{n-2} W_k\right)} \\ &= \frac{W_{n-1}}{\sum_{k=1}^{n-1} W_k} \left[ \frac{\left(\sum_{k=1}^{n-2} W_k\right) G_{n-1} - \sum_{k=1}^{n-2} W_k G_k}{\sum_{k=1}^{n-2} W_k} \right] \\ &= \frac{W_{n-1}}{\sum_{k=1}^{n-1} W_k} \left[ G_{n-1} - \frac{\sum_{k=1}^{n-2} W_k G_k}{\sum_{k=1}^{n-2} W_k} \right] \\ V_n &= V_{n-1} + \frac{W_{n-1}}{C_{n-1}} (G_{n-1} - V_{n-1}) \\ \text{Letting } n \to n+1: \quad V_{n+1} &= V_n + \frac{W_n}{C_n} (G_n - V_n) \end{align}
+$$
+
