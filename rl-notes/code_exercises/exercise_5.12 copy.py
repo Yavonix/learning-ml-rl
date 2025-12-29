@@ -1,5 +1,4 @@
 import numpy as np
-import time
 from tqdm import tqdm
 
 track_map = np.array([
@@ -28,33 +27,25 @@ start_locations = []
 finish_locations = []
 for idx, val in np.ndenumerate(track_map):
     if val == 2:
-        start_locations.append(idx[::-1])
+        start_locations.append(idx[::-1]) # Store as x, y
     elif val == 3:
         finish_locations.append(idx[::-1])
 start_locations = np.array(start_locations)
 finish_locations = set(tuple(loc) for loc in finish_locations)
 
-# state is [x, y, vx, vy]
+epsilon = 0.5 # Start lower, usually better for on-policy
+gamma = 1.0
+alpha = 0.1 # Constant learning rate (better than 1/N for this)
 
-epsilon = 0.9
-gamma = 1
-
-# x, y, vx, vy, action
-Q = np.zeros((*track_map.shape, 5, 5, 9))
-N = np.zeros_like(Q)
-
-# probability of taking each action
-
+# Q-Table: y, x, vy, vx, action
+# Note: Dimensions are (19, 17, 5, 5, 9)
+Q = np.random.random((*track_map.shape, 5, 5, 9)) - 10 # Init slightly negative to encourage exploration
+# Action Map: 0:↙, 1:↓, 2:↘, 3:←, 4:•, 5:→, 6:↖, 7:↑, 8:↗
 action_map = np.array([[-1,1], [0, 1], [1, 1], [-1,0], [0, 0], [1, 0], [-1,-1], [0, -1], [1, -1]])
 
-def visualize_policy(Q: np.ndarray, N: np.ndarray, track_map, episode_num, epsilon):
-    # Actions: 0:↙, 1:↓, 2:↘, 3:←, 4:•, 5:→, 6:↖, 7:↑, 8:↗
+def visualize_policy(Q, track_map, episode_num, epsilon):
     arrows = ['↙', '↓', '↘', '←', '•', '→', '↖', '↑', '↗']
-    
-    # ANSI escape code to clear screen and move cursor to top left
-    print("\033[H\033[J", end="")
-    
-    print(f"Episode: {episode_num}, Epsilon: {epsilon:.4f}")
+    print(f"\nEpisode: {episode_num}, Epsilon: {epsilon:.4f}")
     for y in range(track_map.shape[0]):
         row_str = ""
         for x in range(track_map.shape[1]):
@@ -63,12 +54,9 @@ def visualize_policy(Q: np.ndarray, N: np.ndarray, track_map, episode_num, epsil
             elif track_map[y, x] == 3:
                 row_str += "F "
             else:
-                # best_action = np.argmax(Q[y, x, 5, 5])
-                best_action = np.argmax(Q[y, x].sum(axis=(0,1)))
+                best_action = np.argmax(Q[y, x, 0, 0])
                 row_str += arrows[best_action] + " "
         print(row_str)
-
-
 
 def check_collision(old_state, new_state, track_map):
     # Bresenham-like or simple step check to prevent teleporting through walls
@@ -92,22 +80,19 @@ def check_collision(old_state, new_state, track_map):
         if track_map[y, x] == 0:
             return True # Hit wall
             
-        # Optional: Check finish line crossing here if you want perfect precision
+        # Maybe check finish line crossing here for perfect precision
             
     return False
 
-
-def generate_episode(Q: np.ndarray, track_map, epsilon):
+def generate_episode(Q, track_map, epsilon):
     start_choice = np.random.randint(0, len(start_locations))
-    # Start with vx=0, vy=0
-    state = np.append(start_locations[start_choice], [0, 0]) 
-
+    state = np.append(start_locations[start_choice], [0, 0]) # x, y, vx, vy
     log = []
 
-    while True:
+    for _ in range(5000): # Safety limit
         initial_state = state.copy()
 
-        # Epsilon-greedy selection
+        # Epsilon Greedy
         if np.random.uniform() < epsilon:
             choice = np.random.randint(0, 9)
         else:
@@ -115,93 +100,59 @@ def generate_episode(Q: np.ndarray, track_map, epsilon):
         
         action = action_map[choice]
 
-        # Calculate potential new velocity
+        # Velocity Update
         new_vx = np.clip(state[2] + action[0], 0, 4)
         new_vy = np.clip(state[3] + action[1], 0, 4)
 
-        # Both cannot be zero. If they are, keep old velocity 
         if new_vx == 0 and new_vy == 0:
-            pass 
-        else:
-            state[2] = new_vx
-            state[3] = new_vy
-
-        # x increases (moves right toward finish)
-        state[0] += state[2] 
-        # y DECREASES (moves UP the map toward finish)
-        state[1] -= state[3] 
-
-        # NEEDS FIXING
-        is_valid = not check_collision(initial_state, state, track_map)
-
-        if tuple(state[0:2]) in finish_locations:
-            log.append((initial_state, choice, 0))
-            break
-            
-        if not is_valid:
+            # Force agent to keep moving or stick to old velocity?
+            # Standard rule: if result is 0,0, velocity doesn't change
+            new_vx, new_vy = state[2], state[3]
+            # If it was already 0,0 and tries to stay 0,0, that's allowed (but bad strategy)
+        
+        state[2] = new_vx
+        state[3] = new_vy
+        
+        # Calculate intended new position
+        new_x = state[0] + state[2]
+        new_y = state[1] - state[3] # Moving UP array
+        
+        new_state_pos = np.array([new_x, new_y, state[2], state[3]])
+        
+        # Check Collision
+        if check_collision(initial_state, new_state_pos, track_map):
             start_choice = np.random.randint(0, len(start_locations))
             state = np.append(start_locations[start_choice], [0,0])
-            log.append((initial_state, choice, -1))
+            log.append((initial_state, choice, -10)) # Heavier penalty for crash helps speed up learning
         else:
-            log.append((initial_state, choice, -1))
-    
-        if len(log) > 5000:
-            return log 
-
+            # Valid move
+            state[0] = new_x
+            state[1] = new_y
+            
+            # Check Finish
+            if tuple(state[0:2]) in finish_locations:
+                log.append((initial_state, choice, 0)) # Finished!
+                break
+            else:
+                log.append((initial_state, choice, -1)) # Step cost
+                
     return log
 
-
-
-
-
-
-for i in tqdm(range(50000)): # 50k should be enough with Alpha
+for i in tqdm(range(50000)):
     episode = generate_episode(Q, track_map, epsilon)
     
-    # Decaying Epsilon
     if i > 0 and i % 100 == 0:
-        epsilon = max(0.01, epsilon * 0.99) # Floor at 0.01
+        epsilon = max(0.01, epsilon * 0.99)
         
     G = 0
     for state, action, reward in episode[::-1]:
         G = gamma * G + reward
         idx = (state[1], state[0], state[3], state[2], action)
         
-        # Constant Alpha Update
-        Q[idx] = Q[idx] + 0.1 * (G - Q[idx])
+        Q[idx] = Q[idx] + alpha * (G - Q[idx])
 
-# Test Run
+
 print("\nTest Runs (Deterministic):")
 for i in range(5):
     episode = generate_episode(Q, track_map, 0)
     print(f"Run {i}: {len(episode)} steps")
-
-
-
-
-
-
-
-
-
-
-
-
-# for i in range(100000):
-#     episode = generate_episode(Q, track_map, epsilon)
-    
-#     if i % 30 == 0:
-#         visualize_policy(Q, N, track_map, i, epsilon)
-
-#     epsilon = 0.99995 * epsilon
-#     G = 0
-#     for state, action, reward in episode[::-1]:
-#         G = gamma * G + reward
-#         idx = (state[1], state[0], state[3], state[2], action)
-#         N[idx] += 1
-#         # Q[idx] = Q[idx] + 0.05*(G - Q[idx])
-#         Q[idx] = Q[idx] + (G - Q[idx])/N[idx]
-
-# for i in range(100):
-#     episode = generate_episode(Q, track_map, 0)
-#     print(len(episode))
