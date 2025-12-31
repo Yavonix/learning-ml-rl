@@ -483,6 +483,143 @@ Ordinary importance sampling is unbiased with high variance. Weighted importance
 
 
 
+## Summary
+
+Advantages of Monte Carlo methods:
+- No transition probabilities required.
+- Can be used with complex environments (don't need to compute every possible next state and weight them as in DP methods)
+- Easy to focus Monte Carlo methods on a subset of the states.
+- Does not bootstrap.
+	- TD learning and Dynamic programming bootstrap: $V(S_t) \leftarrow V(S_t) + \alpha[R_{t+1}+\gamma V(S_{t+1}) - V(S_t)]$.
+	- This requires the Markov property (prior state is all that is needed to predict future state).
+	- Monte Carlo does not bootstrap but waits until the end of the episode and looks at actual return: $V(S_t) \leftarrow V(S_t) + \alpha [G_t - V(S_t)]$
+
+# Chapter 6 Temporal Difference Learning
+## TD State Value Prediction
+While constant-$\alpha$ Monte Carlo must wait until the end of an episode to update a state value:
+$$V(S_t) \leftarrow V(S_t) + \alpha [G_t - V(S_t)] \tag{6.1}$$
+Temporal difference learning waits only for the next step:
+$$V(S_t) \leftarrow V(S_t) + \alpha[R_{t+1} + \gamma V(S_{t+1}) - V(S_t)] \tag{6.2}$$
+
+This is termed TD(0) or *one-step* TD. Written in procedural form:
+$$\begin{array}{l} \textbf{Tabular TD(0) for estimating } v_\pi \\ \\ \text{Input: the policy } \pi \text{ to be evaluated} \\ \text{Algorithm parameter: step size } \alpha \in (0, 1] \\ \text{Initialize } V(s), \text{ for all } s \in \mathcal{S}^+, \text{ arbitrarily except that } V(\textit{terminal}) = 0 \\ \\ \text{Loop for each episode:} \\ \quad \text{Initialize } S \\ \quad \text{Loop for each step of episode:} \\ \qquad A \leftarrow \text{action given by } \pi \text{ for } S \\ \qquad \text{Take action } A, \text{ observe } R, S' \\ \qquad V(S) \leftarrow V(S) + \alpha[R + \gamma V(S') - V(S)] \\ \qquad S \leftarrow S' \\ \quad \text{until } S \text{ is terminal} \end{array}$$
+The idea of of basing updates in part on existing estimates is called *bootstrapping* as is done in DP.
+
+To contextualise in terms of equations:
+$$
+\begin{align}
+v_{\pi}(s) &\doteq \mathbb{E}_{\pi}[G_t \mid S_t=s] \tag{6.3} \\
+&= \mathbb{E}_{\pi}[R_{t+1} + \gamma G_{t+1} \mid S_t=s] \tag{from 3.9} \\
+&= \mathbb{E}_{\pi}[R_{t+1} + \gamma v_{\pi}(S_{t+1}) \mid S_t=s] \tag{6.4} \\
+\end{align}
+$$
+Monte Carlo methods estimate 6.3. They use the full return from the episode.
+DP methods estimate 6.4. They only look at the next state.
+- DP is an estimate because we do not know $v_\pi(S_{t+1})$ and use $V(S_{t+1})$ instead. We know the environment transition dynamics so $\mathbb{E}_\pi$ is not the issue. (Calculates $\mathbb{E}$ exactly using known probabilities.)
+- TD is an estimate because we do not know $v_\pi(S_{t+1})$ and use $V(S_{t+1})$ instead AND the environment transition dynamics are unknown so $\mathbb{E}_\pi$ is also estimated. (Uses one step sample $(R,S′)$ to estimate $\mathbb{E}$.)
+
+6.3 implies an update based on **complete history**.
+6.4 implies an update based on **bootstrapping**.
+
+| **Method**          | **Approximates the Expectation (E)?**                                         | **Approximates the Value Function (vπ​→V)?**                                      |
+| ------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Monte Carlo         | Yes (Sampling)<br>Uses one sample path to estimate $\mathbb{E}$ in Eq (6.3).  | No (No Bootstrapping)<br>Uses the actual $G_t$, which is unbiased.                |
+| Dynamic Programming | No (Full Width)<br>Calculates $\mathbb{E}$ exactly using known probabilities. | Yes (Bootstrapping)<br>Substitutes $V(S_{t+1})$ for $v_\pi(S_{t+1})$ in Eq (6.4). |
+| Temporal Difference | Yes (Sampling)<br>Uses one step sample ($R, S'$) to estimate $\mathbb{E}$.    | Yes (Bootstrapping)<br>Substitutes $V(S_{t+1})$ for $v_\pi(S_{t+1})$.             |
+
+TD and Monte Carlo updates are called *sample updates* as they look at a single sample successor state.
+DP updates are called *expected updates* as they look at the complete distribution of all possible successors.
+
+In the brackets of the alpha filter above we have what we will term *temporal difference error*:
+$$
+\delta_t \doteq R_{t+1} + \gamma V(S_{t+1}) - V(S_t) \tag{6.5}
+$$
+$\delta_t$ is the error in $V(S_t)$ available at time $t+1$.
+
+Monte Carlo error can be written as a sum of TD errors:
+$$\begin{align} G_t - V(S_t) &= R_{t+1} + \gamma G_{t+1} - V(S_t) + \gamma V(S_{t+1}) - \gamma V(S_{t+1}) \tag{from (3.9)} \\ &= \delta_t + \gamma(G_{t+1} - V(S_{t+1})) \\ &= \delta_t + \gamma \delta_{t+1} + \gamma^2(G_{t+2} - V(S_{t+2})) \\ &= \delta_t + \gamma \delta_{t+1} + \gamma^2 \delta_{t+2} + \dots + \gamma^{T-t-1}\delta_{T-1} + \gamma^{T-t}(G_T - V(S_T)) \\ &= \delta_t + \gamma \delta_{t+1} + \gamma^2 \delta_{t+2} + \dots + \gamma^{T-t-1}\delta_{T-1} + \gamma^{T-t}(0 - 0) \\ &= \sum_{k=t}^{T-1} \gamma^{k-t} \delta_k. \tag{6.6} \end{align}$$
+If $V$ is updated during the episode, then the identity is not exact. If the step size is small then it may still hold approximately.
+
+## Advantages of TD Prediction Models
+- No transition probabilities required.
+- Can be used with complex environments (don't need to compute every possible next state and weight them as in DP methods).
+- Naturally implemented in an online, fully incremental fashion (does not need to wait until end of episode to learn).
+- Able to learn from each transition regardless of what subsequent actions are taken (contrast with off policy Monte Carlo methods using importance sampling when the deterministic policy does not choose the given action)
+- **TD methods learn faster**.
+
+## Optimality
+Monte Carlo methods minimise MSE on existing data.
+TD methods minimise  MSE on future data (TD finds estimates that are exactly correct for the maximum-likelihood model of the Markov process).
+
+Up to exercises 6.8, 6.9, 6.10
+
+# Summary
+
+## Prediction
+### Monte Carlo
+**On Policy Monte Carlo**
+$$
+\begin{align}
+N &\leftarrow N + 1 \\
+V(S_t) &\leftarrow V(S_t) + \frac{1}{N} [G_t - V(S_t)] \tag{6.1}
+\end{align}
+$$
+**Constant-$\alpha$ Monte Carlo**
+$$V(S_t) \leftarrow V(S_t) + \alpha [G_t - V(S_t)] \tag{6.1}$$
+**Off Policy Monte Carlo** 
+Note $W$ updated first as the return is dependent on the next action.
+$$
+\begin{align}
+W &\leftarrow W\cdot\frac{\pi(A_t \mid S_t)}{b(A_t \mid S_t)} \\
+C(S_t) &\leftarrow C(S_t) + W \\
+V(S_t) &\leftarrow V(S_t) + \frac{W}{C(S_t)} [G_t - V(S_t)] \tag{6.1}
+\end{align}
+$$
+### TD
+**Temporal Difference Learning**
+$$V(S_t) \leftarrow V(S_t) + \alpha[R_{t+1} + \gamma V(S_{t+1}) - V(S_t)] \tag{6.2}$$
+## Control
+### Monte Carlo
+**On Policy Monte Carlo**
+$$
+\begin{align}
+N(S_t, A_t) &\leftarrow N(S_t, A_t) + 1 \\
+Q(S_t, A_t) &\leftarrow Q(S_t, A_t) + \frac{1}{N(S_t, A_t)} [G_t - Q(S_t, A_t)]
+\end{align}
+$$
+**Constant-$\alpha$ Monte Carlo**
+$$
+Q(S_t, A_t) \leftarrow Q(S_t, A_t) + \alpha [G_t - Q(S_t, A_t)]
+$$
+**Off Policy Monte Carlo**
+Note $W$ is updated **after** the $Q$ update here. This is because $Q(S_t​,A_t​)$ estimates the value conditional on taking $A_t​$, so we do not re-weight the probability of At​ occurring, we only re-weight the subsequent trajectory.
+$$
+\begin{align}
+C(S_t, A_t) &\leftarrow C(S_t, A_t) + W \\
+Q(S_t, A_t) &\leftarrow Q(S_t, A_t) + \frac{W}{C(S_t, A_t)} [G_t - Q(S_t, A_t)] \\
+W &\leftarrow W\cdot\frac{\pi(A_t \mid S_t)}{b(A_t \mid S_t)}
+\end{align}
+$$
+### TD
+**SARSA**
+$$
+Q(S_t,A_t) \leftarrow Q(S_t, A_t) + \alpha\left[ R_{t+1} + \gamma Q(S_{t+1}, A_{t+1}) - Q(S_t, A_t) \right]
+$$
+**Q-Learning**
+$$
+Q(S_t, A_t) \leftarrow Q(S_t, A_t) + \alpha \left[ R_{t+1} + \gamma\max_{a\in\mathcal{A}}Q(S_{t+1}, a) - Q(S_t, A_t) \right]
+$$
+**Expected SARSA**
+$$
+Q(S_t,A_t) \leftarrow Q(S_t, A_t) + \alpha\left[ R_{t+1} + \gamma \mathbb{E}_\pi [Q(S_{t+1}, A_{t+1})] - Q(S_t, A_t) \right]
+$$
+
+
+
+
+
+
+
 
 
 
