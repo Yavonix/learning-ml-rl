@@ -540,6 +540,18 @@ Monte Carlo error can be written as a sum of TD errors:
 $$\begin{align} G_t - V(S_t) &= R_{t+1} + \gamma G_{t+1} - V(S_t) + \gamma V(S_{t+1}) - \gamma V(S_{t+1}) \tag{from (3.9)} \\ &= \delta_t + \gamma(G_{t+1} - V(S_{t+1})) \\ &= \delta_t + \gamma \delta_{t+1} + \gamma^2(G_{t+2} - V(S_{t+2})) \\ &= \delta_t + \gamma \delta_{t+1} + \gamma^2 \delta_{t+2} + \dots + \gamma^{T-t-1}\delta_{T-1} + \gamma^{T-t}(G_T - V(S_T)) \\ &= \delta_t + \gamma \delta_{t+1} + \gamma^2 \delta_{t+2} + \dots + \gamma^{T-t-1}\delta_{T-1} + \gamma^{T-t}(0 - 0) \\ &= \sum_{k=t}^{T-1} \gamma^{k-t} \delta_k. \tag{6.6} \end{align}$$
 If $V$ is updated during the episode, then the identity is not exact. If the step size is small then it may still hold approximately.
 
+## On Policy TD Control
+### SARSA
+Effectively learn state-action pairs as opposed to state values.
+$$
+Q(S_t, A_t) \leftarrow Q(S_t, A_t) + \alpha[R_{t+1} + \gamma Q(S_{t+1}, A_{t+1}) - Q(S_t, A_t)]
+$$
+If $S_{t+1}$ is terminal, then $Q(S_{t+1}, A_{t+1})$ is defined as zero.
+
+![[Cheat sheet 4.png|center]]
+
+
+
 ## Advantages of TD Prediction Models
 - No transition probabilities required.
 - Can be used with complex environments (don't need to compute every possible next state and weight them as in DP methods).
@@ -601,6 +613,7 @@ W &\leftarrow W\cdot\frac{\pi(A_t \mid S_t)}{b(A_t \mid S_t)}
 \end{align}
 $$
 ### TD
+#### On Policy
 **SARSA**
 $$
 Q(S_t,A_t) \leftarrow Q(S_t, A_t) + \alpha\left[ R_{t+1} + \gamma Q(S_{t+1}, A_{t+1}) - Q(S_t, A_t) \right]

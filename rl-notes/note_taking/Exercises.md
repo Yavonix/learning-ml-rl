@@ -655,3 +655,112 @@ We multiply the entire error term because we want to control how much to weight 
 $$
 V(S_t) \leftarrow V(S_t) + \alpha \rho_{t:t}[R_{t+1} + V(S_{t+1}) - V(S_t)]
 $$
+6.8
+$$
+\begin{align} G_t - Q(S_t, A_t) &= R_{t+1} + \gamma G_{t+1} - Q(S_t, A_t) + \gamma Q(S_{t+1}, A_{t+1}) - \gamma Q(S_{t+1}, A_{t+1}) \tag{from (3.9)} \\
+&= \delta_t + \gamma(G_{t+1} - Q(S_{t+1}, A_{t+1})) \\
+&= \delta_t + \gamma \delta_{t+1} + \gamma^2(G_{t+2} - Q(S_{t+2}, A_{t+2})) \\
+&= \delta_t + \gamma \delta_{t+1} + \gamma^2 \delta_{t+2} + \dots + \gamma^{T-t-1}\delta_{T-1} + \gamma^{T-t}((G_{T} - Q(S_{T}, A_{T})) \\
+&= \delta_t + \gamma \delta_{t+1} + \gamma^2 \delta_{t+2} + \dots + \gamma^{T-t-1}\delta_{T-1} + \gamma^{T-t}(0 - 0) \\
+&= \sum_{k=t}^{T-1} \gamma^{k-t} \delta_k. \end{align}
+$$
+
+6.9
+```python
+import numpy as np
+from dataclasses import dataclass, field
+from typing import Type
+import plotly.express as px
+
+State = np.ndarray # x,y
+Reward = np.ndarray # float
+Done = bool
+
+@dataclass
+class Grid:
+    height: np.ndarray = field(default_factory=lambda: np.array(7))
+    wind: np.ndarray =  field(default_factory=lambda: np.array([0,0,0,1,1,1,2,2,1,0]))
+    moveset: np.ndarray = field(default_factory=lambda: np.array([[-1,0], [1,0], [0,-1], [0,1], [-1,-1], [-1, 1], [1,-1], [1,1]]))
+    goal: np.ndarray = field(default_factory=lambda: np.array([7,3]))
+
+    def step(self, state: State, action: int) -> tuple[State, Reward, Done]:
+        state = state.copy() # to prevent modifying original state
+        state[1] = state[1] + self.wind[state[0]]
+        state = state + self.moveset[action]
+        state[0] = np.clip(state[0], 0, self.wind.shape[0] - 1)
+        state[1] = np.clip(state[1], 0, self.height - 1)
+
+        if np.all(state == self.goal):
+            return (state, np.array(0), True)
+        else:
+            return (state, np.array(-1), False)
+    
+    def get_initial_state(self):
+        return np.array([0,3])
+        
+class Sarsa:
+    def __init__(self, env: Grid, epsilon: float = 0.1, alpha: float = 0.5):
+        self.env = env
+        self.Q = np.zeros((env.height,env.wind.shape[0], env.moveset.shape[0]))
+        self.epsilon = epsilon
+        self.alpha = alpha
+        self.episode_count = []
+
+    def select_action(self, state: State):
+        p = np.random.uniform()
+        if p < self.epsilon: # random action
+            return np.random.randint(self.env.moveset.shape[0])
+        else:
+            return int(self.Q[state[1], state[0]].argmax())
+
+    def solve(self):
+        episode_cnt = 0
+        timestep = 0
+        while True:
+            state = self.env.get_initial_state()
+            action = self.select_action(state)
+
+            while True:
+                nxt_state, reward, done = self.env.step(state, action)
+                nxt_action = self.select_action(nxt_state)
+
+                self.episode_count.append(episode_cnt)
+                timestep += 1
+
+                idx = (state[1], state[0], action)
+                # nxt_idx = (nxt_state[1], nxt_state[0], nxt_action) # Sarsa
+                nxt_idx = (nxt_state[1], nxt_state[0], self.Q[nxt_state[1], nxt_state[0]].argmax()) # Q Learning
+                self.Q[idx] = self.Q[idx] + self.alpha * (reward + self.Q[nxt_idx] - self.Q[idx])
+
+                if done:
+                    break
+
+                state = nxt_state
+                action = nxt_action
+            
+            episode_cnt += 1
+
+            if timestep >= 8000:
+                break
+
+env = Grid()
+solver = Sarsa(env)
+solver.solve()
+
+```
+
+6.10
+Same as 6.9 but with modified step function:
+```python
+    def step(self, state: State, action: int) -> tuple[State, Reward, Done]:
+        state = state.copy() # to prevent modifying original state
+        state[1] = state[1] + self.wind[state[0]] + (np.random.randint(-1,2) if self.wind[state[0]] != 0 else 0) # 1 cell below or 0 or 1 cell above what is dictated by the wind
+        state = state + self.moveset[action]
+        state[0] = np.clip(state[0], 0, self.wind.shape[0] - 1)
+        state[1] = np.clip(state[1], 0, self.height - 1)
+
+        if np.all(state == self.goal):
+            return (state, np.array(0), True)
+        else:
+            return (state, np.array(-1), False)
+```
