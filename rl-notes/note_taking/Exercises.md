@@ -607,3 +607,51 @@ $$
 \begin{align} V_n - V_{n-1} &= \frac{\sum_{k=1}^{n-1} W_k G_k}{\sum_{k=1}^{n-1} W_k} - \frac{\sum_{k=1}^{n-2} W_k G_k}{\sum_{k=1}^{n-2} W_k} \\ &= \frac{\left(\sum_{k=1}^{n-2} W_k\right) \left(\sum_{k=1}^{n-1} W_k G_k\right) - \left(\sum_{k=1}^{n-1} W_k\right) \left(\sum_{k=1}^{n-2} W_k G_k\right)}{\left(\sum_{k=1}^{n-1} W_k\right) \left(\sum_{k=1}^{n-2} W_k\right)} \\ &= \frac{\left(\sum_{k=1}^{n-2} W_k\right) \left(\sum_{k=1}^{n-2} W_k G_k + W_{n-1} G_{n-1}\right) - \left(\sum_{k=1}^{n-2} W_k + W_{n-1}\right) \left(\sum_{k=1}^{n-2} W_k G_k\right)}{\left(\sum_{k=1}^{n-1} W_k\right) \left(\sum_{k=1}^{n-2} W_k\right)} \\ &= \frac{\sum_{k=1}^{n-2} W_k \sum_{k=1}^{n-2} W_k G_k + \sum_{k=1}^{n-2} W_k (W_{n-1} G_{n-1}) - \sum_{k=1}^{n-2} W_k \sum_{k=1}^{n-2} W_k G_k - W_{n-1} \sum_{k=1}^{n-2} W_k G_k}{\left(\sum_{k=1}^{n-1} W_k\right) \left(\sum_{k=1}^{n-2} W_k\right)} \\ &= \frac{W_{n-1} \left( \sum_{k=1}^{n-2} W_k \right) G_{n-1} - W_{n-1} \sum_{k=1}^{n-2} W_k G_k}{\left(\sum_{k=1}^{n-1} W_k\right) \left(\sum_{k=1}^{n-2} W_k\right)} \\ &= \frac{W_{n-1}}{\sum_{k=1}^{n-1} W_k} \left[ \frac{\left(\sum_{k=1}^{n-2} W_k\right) G_{n-1} - \sum_{k=1}^{n-2} W_k G_k}{\sum_{k=1}^{n-2} W_k} \right] \\ &= \frac{W_{n-1}}{\sum_{k=1}^{n-1} W_k} \left[ G_{n-1} - \frac{\sum_{k=1}^{n-2} W_k G_k}{\sum_{k=1}^{n-2} W_k} \right] \\ V_n &= V_{n-1} + \frac{W_{n-1}}{C_{n-1}} (G_{n-1} - V_{n-1}) \\ \text{Letting } n \to n+1: \quad V_{n+1} &= V_n + \frac{W_n}{C_n} (G_n - V_n) \end{align}
 $$
 
+
+
+6.1
+$$
+\begin{aligned}
+G_t - V_t(S_t) &= R_{t+1} + \gamma G_{t+1} - V_t(S_t) \\
+&= R_{t+1} + \gamma G_{t+1} - V_t(S_t) + \gamma V_{t+1}(S_{t+1}) - \gamma V_{t+1}(S_{t+1}) \\
+&= \underbrace{R_{t+1} + \gamma V_t(S_{t+1}) - V_t(S_t)}_{\delta_t} + \gamma(G_{t+1} - V_{t+1}(S_{t+1})) + \gamma V_{t+1}(S_{t+1}) - \gamma V_t(S_{t+1}) \\
+&= \delta_t + \gamma(G_{t+1} - V_{t+1}(S_{t+1})) + \gamma \left[ V_{t+1}(S_{t+1}) - V_t(S_{t+1}) \right] \\
+&= \sum_{k=t}^{T-1} \gamma^{k-t} \delta_k + \sum_{k=t}^{T-1} \gamma^{k-t+1} \left[ V_{k+1}(S_{k+1}) - V_k(S_{k+1}) \right]
+\end{aligned}
+$$
+
+6.2
+- (Bootstrapping) TD is faster because if the surrounding state values are highly accurate, then the update to the current state is a good estimate.
+- (Variance) TD is cleaner as it ignores noise of the full episode impact the current update **if the rest of the episode has been approximated well**. TD depends only on the randomness of one step plus the stable average of the rest.
+
+6.3
+When at A, the agent went left receiving a reward of 0. The TD algorithm updated $V(A)$ according to:
+$$
+\begin{align}
+V(A) &\leftarrow V(A) + \alpha[R_{t+1} + \gamma V(S_{terminal}) - V(A)] \\
+V(A) &\leftarrow 0.5 + 0.15\cdot[0 + 1\cdot0 - 0.5] \\
+V(A) &\leftarrow 0.425 \\
+\end{align}
+$$
+Only the estimate for A changed as transitions between non-terminal states at program initialisation with no rewards given result in the following updates:
+$$
+\begin{align}
+V(S_t) &\leftarrow V(S_t) + \alpha[R_{t+1} + \gamma V(S_{t+1}) - V(S_t)] \\
+V(S_t) &\leftarrow 0.5 + 0.15\cdot[0 + 1\cdot0.5 - 0.5] \\
+V(S_t) &\leftarrow 0.5 \\
+\end{align}
+$$
+
+6.4
+$\alpha$ controls step size updates. There will be values for which both algorithms are unstable. It is possible to vary $\alpha$ such that MC converges quicker than TD. TD is structurally superior for this task as it exploits the Markov property. No, conclusions will not change.
+
+6.5*
+
+6.6
+Solve a system of equations as given by DP or use a numerical DP approximation. It would be the former as fractions were reported.
+
+6.7
+We multiply the entire error term because we want to control how much to weight the update.
+$$
+V(S_t) \leftarrow V(S_t) + \alpha \rho_{t:t}[R_{t+1} + V(S_{t+1}) - V(S_t)]
+$$
