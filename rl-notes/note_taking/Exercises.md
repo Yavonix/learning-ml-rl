@@ -764,3 +764,34 @@ Same as 6.9 but with modified step function:
         else:
             return (state, np.array(-1), False)
 ```
+
+6.11
+Q-learning is off policy as the algorithm approximates the optimal policy $\pi_*$ independent of the behaviour policy.  
+
+6.12
+If action selection is greedy for both the behaviour and target policies in Sarsa, then no Q-learning is not the exact same as Sarsa. In Q-learning the behaviour policy is different to the target policy to encourage exploration.
+
+6.13*
+
+Need to do 6.13 and 6.14
+
+7.1
+$$
+\begin{aligned}
+G_{t:t+n} - V(S_t) &= R_{t+1} + \gamma R_{t+2} + \dots + \gamma^{n-1} R_{t+n} + \gamma^n V_{t+n-1}(S_{t+n}) - V(S_t) \\
+\\
+&= R_{t+1} + \gamma G_{t+1:t+n} - V(S_t) + \gamma V(S_{t+1}) - \gamma V(S_{t+1}) \\
+\\
+&= \delta_t + \gamma [ G_{t+1:t+n} - V(S_{t+1}) ] \\
+\\
+&= \sum_{k=t}^{t+n-1} \gamma^k \cdot \delta_k
+\end{aligned}
+$$
+
+7.2
+> [!error] TODO
+
+I expect that the method using the sum of TD errors will be slightly worse as we would be using older estimates of the values when performing updates.
+
+7.3
+A larger random walk was used so that episodes which n-step TD operated over would actually be long enough for different n parameters to yield different computations

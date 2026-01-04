@@ -544,12 +544,43 @@ If $V$ is updated during the episode, then the identity is not exact. If the ste
 ### SARSA
 Effectively learn state-action pairs as opposed to state values.
 $$
-Q(S_t, A_t) \leftarrow Q(S_t, A_t) + \alpha[R_{t+1} + \gamma Q(S_{t+1}, A_{t+1}) - Q(S_t, A_t)]
+Q(S_t, A_t) \leftarrow Q(S_t, A_t) + \alpha[R_{t+1} + \gamma Q(S_{t+1}, A_{t+1}) - Q(S_t, A_t)] \tag{6.7}
 $$
 If $S_{t+1}$ is terminal, then $Q(S_{t+1}, A_{t+1})$ is defined as zero.
 
 ![[Cheat sheet 4.png|center]]
 
+
+## Off Policy TD Control
+### Q-Learning
+$$
+Q(S_t, A_t) \leftarrow Q(S_t, A_t) + \alpha[R_{t+1} + \gamma \max_a Q(S_{t+1}, a) - Q(S_t, A_t)] \tag{6.8}
+$$
+![[Cheat sheet 5.png|center]]
+### Expected Sarsa
+$$
+\begin{align}
+Q(S_t, A_t) &\leftarrow Q(S_t, A_t) + \alpha [R_{t+1} + \gamma\mathbb{E}_\pi[Q(S_{t+1}, A_{t+1} \mid S_{t+1}) - Q(S_t, A_t)] \\
+&\leftarrow Q(S_t, A_t) + \alpha[R_{t+1} + \gamma \sum_a \pi(a\mid S_{t+1}) Q(S_{t+1}, a) - Q(S_t, A_t)] \tag{6.9}
+\end{align}
+$$
+- More computational than Sarsa
+- Removes variance due to random selection of $A_{t+1}$
+
+Why is this better? Say you are at state A and take action a to reach state B.
+In Sarsa, if your next action at B is randomly selected to be a terrible move, the value of your previous state A is massively penalized because of that one unlucky roll.
+In Expected Sarsa, the value of state A is updated based on the weighted average of all possible actions at B. It accounts for the risk of the bad move without being skewed by the random occurrence of it.
+
+## Maximisation Bias and Double Learning
+
+Say you have a MDP with states A and B. The reward from B is given by $\mathcal{N}(-0.1, 1)$. Over time Q-learning will explore several actions from B and store their respective rewards. When at A, having transitioned to B Q-learning will take the maximum state-action value from B which also happens to be the randomly better rewards given from B. Therefore the update at A will be biased to the maximum of the Q-values at B.
+
+A possible solution is to store two Q tables. One Q table could be used to pick the maximum action, while the second Q table could have its state-action value for that action as the target for the update of the first Q table. The lookup in Q2 will not have the maximisation bias present in Q1.
+This gives the update rule:
+$$
+Q_1(S_t, A_t) \leftarrow Q_1(S_t, A_t) + \alpha [R_{t+1} + \gamma Q_2\left(S_{t+1}, \text{arg}\max_a Q_1(S_{t+1}, a)\right) - Q_1(S_t, A_t)] \tag{6.10}
+$$
+![[Cheat sheet 6.png|center]]
 
 
 ## Advantages of TD Prediction Models
@@ -563,7 +594,53 @@ If $S_{t+1}$ is terminal, then $Q(S_{t+1}, A_{t+1})$ is defined as zero.
 Monte Carlo methods minimise MSE on existing data.
 TD methods minimise  MSE on future data (TD finds estimates that are exactly correct for the maximum-likelihood model of the Markov process).
 
-Up to exercises 6.8, 6.9, 6.10
+# N-Step Bootstrapping
+
+## Prediction
+*n-step return*:
+$$
+G_{t:t+n} \doteq R_{t+1} + \gamma R_{t+2} + \cdots + \gamma^{n-1} R_{t+n} + \gamma^n V_{t+n-1}(S_{t+n}) \tag{7.1}
+$$
+If $t+n \ge T$ (n-step return extends to or beyond termination) then all missing terms are taken as zero and n-step return defined to be equal to the ordinary full return ($G_{t:t+n} \doteq G_t\ \text{if}\ t+n \ge T$).
+
+Therefore the *natural state-value learning algorithm is*:
+$$
+V_{t+n}(S_t) \doteq V_{t+n-1}(S_t) + \alpha \left[G_{t:t+n} - V_{t+n-1}(S_t) \right], \qquad 0\le t < T \tag{7.2}
+$$
+No changes will be made during the first n-1 steps of each episode.
+
+![[Cheat sheet 9.png|center]]
+
+## Control
+
+### N-step Sarsa
+Our shift from prediction to control effectively involves switching states for state-action pairs with the addition of an $\epsilon$-greedy policy.
+
+*N-step returns*:
+$$
+G_{t:t+n} \doteq R_{t+1} + \gamma R_{t+2} + \cdots + \gamma^{n-1}R_{t+n} + \gamma^nQ_{t+n-1}(S_{t+n}, A_{t+n}), \qquad n\ge1, 0\le t \lt T-n \tag{7.4}
+$$
+Therefore the *natural action-state-value learning algorithm is*:
+$$
+Q_{t+n}(S_t, A_t) \doteq Q_{t+n-1}(S_t, A_t) + \alpha \left[G_{t:t+n} - Q_{t+n-1}(S_t, A_t) \right] \tag{7.5}
+$$
+![[Cheat sheet 8.png|center]]
+
+
+
+
+
+Up to ex 7.4
+
+
+
+
+
+
+
+
+
+
 
 # Summary
 
