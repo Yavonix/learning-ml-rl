@@ -627,19 +627,95 @@ $$
 ![[Cheat sheet 8.png|center]]
 
 
+N-step Sarsa can be written exactly in terms of novel TD error as:
+$$
+G_{t:t+n} = Q_{t-1=}(S_t, A_t) + \sum_{k=t}^{\min(t+n, T)-1} \gamma^{k-t}\left[R_{k+1} + \gamma Q_k(S_{k+1}, A_{k+1}) - Q_{k-1}(S_k, A_k) \right] \tag{7.6}
+$$
+
+$$
+\begin{align*}
+G_{t:t+n} &= R_{t+1} + \gamma R_{t+2} + \dots + \gamma^{n-1} R_{t+n} + \gamma^n Q_{t+n-1}(S_{t+n}, A_{t+n}) \\
+\\
+&= R_{t+1} + \gamma Q_t(S_{t+1}, A_{t+1}) - Q_{t-1}(S_t, A_t) + Q_{t-1}(S_t, A_t) \\
+&\quad + \gamma R_{t+2} + \dots + \gamma^{n-1} R_{t+n} + \gamma^n Q_{t+n-1}(S_{t+n}, A_{t+n}) - \gamma Q_t(S_{t+1}, A_{t+1}) \\
+\\
+\text{Let } \delta_t &= R_{t+1} + \gamma Q_t(S_{t+1}, A_{t+1}) - Q_{t-1}(S_t, A_t) \\
+\\
+&= \delta_t + Q_{t-1}(S_t, A_t) + \gamma \left[ R_{t+2} + \dots + \gamma^{n-2}R_{t+n} + \gamma^{n-1}Q_{t+n-1}(S_{t+n}, A_{t+n}) - Q_t(S_{t+1}, A_{t+1}) \right] \\
+\\
+&= \delta_t + Q_{t-1}(S_t, A_t) + \gamma \delta_{t+1} + \gamma^2 \delta_{t+2} + \dots \\
+\\
+&= Q_{t-1}(S_t, A_t) + \sum_{k=t}^{\min(t+n, T)-1} \gamma^{k-t} \delta_k
+\end{align*}
+$$
+### Expected Sarsa
+Very similar to Sarsa:
+$$G_{t:t+n} \doteq R_{t+1} + \dots + \gamma^{n-1}R_{t+n} + \gamma^n \bar{V}_{t+n-1}(S_{t+n}), \qquad t+n < T, \tag{7.7}$$
+(with $G_{t:t+n} \doteq G_t$ for $t+n \ge T$) where $\bar{V}_t(s)$ is the _expected approximate value_ of state $s$, using the estimated action values at time $t$, under the target policy:
+$$\bar{V}_t(s) \doteq \sum_a \pi(a|s)Q_t(s, a), \qquad \text{for all } s \in \mathcal{S}. \tag{7.8}$$
+If $s$ is terminal, then its expected approximate value is defined to be zero.
+
+### n-step Off-policy Learning
+When off policy we must once again rescale the return given under the behaviour policy to that of the target policy.
+
+$$V_{t+n}(S_t) \doteq V_{t+n-1}(S_t) + \alpha \rho_{t:t+n-1} [G_{t:t+n} - V_{t+n-1}(S_t)], \qquad 0 \le t < T, \tag{7.9}$$
+where $\rho_{t:t+n-1}$, called the _importance sampling ratio_, is the relative probability under the two policies of taking the $n$ actions from $A_t$ to $A_{t+n-1}$ (cf. Eq. 5.3):
+$$\rho_{t:h} \doteq \prod_{k=t}^{\min(h, T-1)} \frac{\pi(A_k|S_k)}{b(A_k|S_k)}. \tag{7.10}$$
+As for our n-Step Sarsa update, we have the simple off-policy form:
+$$Q_{t+n}(S_t, A_t) \doteq Q_{t+n-1}(S_t, A_t) + \alpha \rho_{t+1:t+n} [G_{t:t+n} - Q_{t+n-1}(S_t, A_t)]  \tag{7.11}$$
+![[Cheat sheet 10.png|center]]
+
+## n-Step Tree Backup Algorithm
+
+Effectively taking the expected value over all the next actions like in expected Sarsa but for every step not just the last.
+
+I.e. for the following backup diagram:
+- Each first-level action a contributes with a weight of $\pi(a|S_{t+1})$, except that the action actually taken, $A_{t+1}$, does not contribute at all.
+- Its probability $\pi(A_{t+1}\mid S_{t+1})$ is used to weight all second-level action values. Thus each non-selected second-level action $a'$ contributes weight $\pi(A_{t+1} \mid S_{t+1})\pi(a'\mid S_{t+2})$.
+- And so on.
+
+![[Cheat sheet 11.png|center]]
+
+So in developing the equations, one step tree backup target matches that of Expected Sarsa:
+$$
+G_{t:t+1} \doteq R_{t+1} + \gamma \sum_a \pi(a\mid S_{t+1})Q_t(S_{t+1},a) \tag{7.15}
+$$
+for $t \lt T-1$.
+
+And the two step tree-backup return is:
+$$
+\begin{align*}
+G_{t:t+2} &\doteq R_{t+1} + \gamma \sum_{a \neq A_{t+1}} \pi(a|S_{t+1})Q_{t+1}(S_{t+1}, a) \\
+&\quad\quad + \gamma\pi(A_{t+1}|S_{t+1}) \left( R_{t+2} + \gamma \sum_{a} \pi(a|S_{t+2})Q_{t+1}(S_{t+2}, a) \right) \\
+&= R_{t+1} + \gamma \sum_{a \neq A_{t+1}} \pi(a|S_{t+1})Q_{t+1}(S_{t+1}, a) + \gamma\pi(A_{t+1}|S_{t+1})G_{t+1:t+2},
+\end{align*}
+$$
+for $t \lt T-2$.
+
+Which we can then turn into a recursive definition:
+$$
+G_{t:t+n} \doteq R_{t+1} + \gamma \sum_{a \neq A_{t+1}} \pi(a|S_{t+1}) Q_{t+n-1}(S_{t+1}, a) + \gamma \pi(A_{t+1}|S_{t+1}) G_{t+1:t+n}, \tag{7.16}
+$$
+for $t \lt T-1, n \ge 2$ with $n=1$ being handled by $(7.15)$ except for $G_{T-1:t+n} \doteq R_T$.
+
+This target is then used with the usual action-value update rule from $n$-step Sarsa:
+$$Q_{t+n}(S_t, A_t) \doteq Q_{t+n-1}(S_t, A_t) + \alpha \left[ G_{t:t+n} - Q_{t+n-1}(S_t, A_t) \right],$$
+for $0 \le t < T$, while the values of all other state–action pairs remain unchanged: $Q_{t+n}(s, a) = Q_{t+n-1}(s, a)$, for all $s, a$ such that $s \neq S_t$ or $a \neq A_t$.
+
+![[Cheat sheet 12.png|center|half]]
 
 
+## Generalising
 
-Up to ex 7.4
+We can generalise n-step Sarsa, expected Sarsa and tree-backup Sarsa into one algorithm: n-step $Q(\sigma)$.
 
+![[Cheat sheet 13.png|center|half]]
 
+>[!error] TODO
+> Go over equations used
 
-
-
-
-
-
-
+The algorithm:
+![[Cheat sheet 14.png|center|half]]
 
 
 # Summary

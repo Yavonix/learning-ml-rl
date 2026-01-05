@@ -794,4 +794,29 @@ $$
 I expect that the method using the sum of TD errors will be slightly worse as we would be using older estimates of the values when performing updates.
 
 7.3
-A larger random walk was used so that episodes which n-step TD operated over would actually be long enough for different n parameters to yield different computations
+A larger random walk was used so that episodes which n-step TD operated over would actually be long enough for different n parameters to yield different computations.
+
+7.4
+$$
+\begin{align*}
+G_{t:t+n} &= R_{t+1} + \gamma R_{t+2} + \dots + \gamma^{n-1} R_{t+n} + \gamma^n Q_{t+n-1}(S_{t+n}, A_{t+n}) \\
+\\
+&= [R_{t+1} + \gamma Q_t(S_{t+1}, A_{t+1})] - \gamma Q_t(S_{t+1}, A_{t+1}) - [Q_{t-1}(S_t, A_t)] + \underbrace{Q_{t-1}(S_t, A_t)}_{\text{Out to front}} \\
+&\quad + \gamma R_{t+2} + \dots + \gamma^{n-1} R_{t+n} + \gamma^n Q_{t+n-1}(S_{t+n}, A_{t+n}) \\
+\\
+\text{let } \delta &= R_{t+1} + \gamma Q_t(S_{t+1}, A_{t+1}) - Q_{t-1}(S_t, A_t) \\
+\\
+&= \delta + \gamma [\underbrace{R_{t+2} + \dots + \gamma^{n-2}R_{t+n} + \gamma^{n-1}Q_{t+n-1}(S_{t+n}, A_{t+n}) - Q_t(S_{t+1}, A_{t+1})}_{\dots}] \\
+&\quad + Q_{t-1}(S_t, A_t) \\
+\\
+&= \delta + \gamma [\delta + \gamma R_{t+3} + \dots + \gamma^{n-2} R_{t+n} + \gamma^{n-1} Q_{t+n-1}(S_{t+n}, A_{t+n}) - \gamma Q_{t+1}(S_{t+2}, A_{t+2})] \\
+&\quad + Q_{t-1}(S_t, A_t) \\
+\\
+&= \sum_{k=t}^{\min(t+n, T)-1} (\gamma^{k-t} \cdot \delta_k) + Q_{t-1}(S_t, A_t)
+\end{align*}
+$$
+
+7.11
+
+NEED TO DO
+
