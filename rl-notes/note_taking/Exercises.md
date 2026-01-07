@@ -820,3 +820,17 @@ $$
 
 NEED TO DO
 
+8.1
+No because in the dyna method the planning stage allow the value/policy to converge to the optimal given the single episode while a single episode run with n-TD, while better than TD(0), would not allow the value to converge as closely within that single episode.
+
+8.2
+Dyna-Q+ and Dyna-Q may have both found suboptimal policies at the start. Over time the transition bonus in Dyna-Q+ encouraged exploration and quickly allowed it to converge to the optimal policy. Dyna-Q on the other hand took longer to converge to this policy due to its lack of exploration.
+
+8.3
+Dyna+ performance degrades as the policy starts to explore states that have not been visited in a long time. I.e. it has already discovered the optimal policy but wastes more time exploring.
+
+8.4
+Values of distant shortcuts never "flow back" to the agents current position. I.e., state 10 hasnt been visited in a while. If the reward applies during planning then the reward will propagate through 5,6,7,8,9. If the agent is at 5 it will see this reward and follow this path. Alternatively if the reward bonus is only local it will never "see" this state unless at 9.
+
+8.5
+Store each transition result in the table as usual and weigh each result by how often they have been experienced. Moreover the weighting of all results should be decayed such that the newer ones have a higher "weighting"

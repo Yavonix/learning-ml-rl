@@ -35,7 +35,8 @@
               "title": "Exercises"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -221,21 +222,20 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "d83b27592d7e4019",
+  "active": "c7834f9d0eb04cf7",
   "lastOpenFiles": [
+    "rl-notes/note_taking/Cheat sheet.md",
+    "rl-notes/note_taking/Exercises.md",
+    "rl-notes/note_taking/attachments/Cheat sheet 17.png",
+    "rl-notes/note_taking/attachments/Cheat sheet 16.png",
+    "rl-notes/note_taking/attachments/Cheat sheet 15.png",
     "rl-notes/note_taking/attachments/Cheat sheet 14.png",
     "rl-notes/note_taking/attachments/Cheat sheet 13.png",
-    "rl-notes/note_taking/Exercises.md",
-    "rl-notes/note_taking/Cheat sheet.md",
     "rl-notes/note_taking/attachments/Cheat sheet 12.png",
     "rl-notes/note_taking/attachments/Cheat sheet 11.png",
     "rl-notes/note_taking/attachments/Cheat sheet 10.png",
     "rl-notes/note_taking/attachments/Cheat sheet 9.png",
     "rl-notes/note_taking/attachments/Cheat sheet 8.png",
-    "rl-notes/note_taking/attachments/Cheat sheet 7.png",
-    "rl-notes/note_taking/attachments/Cheat sheet 6.png",
-    "rl-notes/note_taking/attachments/Cheat sheet 5.png",
-    "rl-notes/note_taking/attachments/Cheat sheet 4.png",
     "rl-notes/code_exercises/testing.ipynb",
     "rl-notes/code_exercises/exercise_5.12_jax_vec.py",
     "rl-notes/code_exercises/exercise_5.12_jax.py",

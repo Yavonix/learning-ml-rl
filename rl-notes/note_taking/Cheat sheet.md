@@ -710,13 +710,61 @@ for $0 \le t < T$, while the values of all other state–action pairs remain unc
 We can generalise n-step Sarsa, expected Sarsa and tree-backup Sarsa into one algorithm: n-step $Q(\sigma)$.
 
 ![[Cheat sheet 13.png|center|half]]
-
 >[!error] TODO
 > Go over equations used
 
 The algorithm:
 ![[Cheat sheet 14.png|center|half]]
 
+# Planning
+## Models and Planning
+Types of models:
+- Distribution models: produce a description of all possibilities and their probabilities (used in dynamic programming).
+- Sample models: produce just one of the possibilities sampled according to the probabilities.
+
+Online planning: performed while interacting with the environment.
+
+Within a planning agent, there are at least two roles for real experience:
+- it can be used to improve the model (*model learning*)
+- it can be used to improve the value function and policy (*direct reinforcement learning*)
+
+Therefore experience can improve value functions and policy either directly or indirectly through the model (called *indirect reinforcement learning*).
+
+Q-learning vs random sample one-step tabular Q-planning. In the latter we draw a random state and action, perform one update, then repeat - we don't finish the episode.
+
+## Dyna-Q
+Dyna-Q:
+- Planning: random-sample one-step tabular Q-planning. Only samples from state-action pairs that have been previously experienced.
+- Model-learning: after each experienced transition, the model records the transition in a table entry for $S_t, A_t$ and the experienced $R_{t+1}, S_{t+1}$. Therefore if the model is queried with a state-action pair that has been experienced before, it simply returns the last-observed next state and next reward as its prediction.
+- *search control* the act of selecting starting state and actions for simulated experiences generate by the model.
+- Direct-RL: one-step tabular Q-learning
+
+In other words - Dyna-Q:
+1. Planning - random-sample one-step tabular Q-planning
+	- Select state and action at random, send them to a sample model, generate return
+	- *search control* the act of selecting starting state and actions for simulated experiences generate by the model.
+2. Direct-RL - one-step tabular Q-learning
+	- After a real transition in the environment, observe result $S_t, A_t \rightarrow R_{t+1}, S_{t+1}$, update policy/value function.
+3. Model Learning - tabular - $M(S_t, A_t) \leftarrow R_{t+1}, S_{t+1}$
+	- Used for planning
+
+![[Cheat sheet 15.png|center]]
+In pseudocode:
+![[Cheat sheet 16.png|center]]
+
+Dyna-Q+:
+- If the modeled reward for a transition is $r$ and the transition has not been tried in $\tau$ time steps, then **planning** updates are done as if that transition produced a reward of $r+k\sqrt{\tau}$.
+- The idea is to encourage exploration during **direct-RL**.
+
+
+During planning, we may end up sampling state-action pairs that are not very useful. For instance in a maze world, after the first episode direct-RL will have only stored one state-action pair value. For that value to be propagated, state-action that immediately lead to that state will need to be selected - this may not be a common occurrence. We need a way to prioritise updates of state-actions immediately preceding state-actions that have been recently updated - we need a measure of urgency. This idea is called *prioritised sweeping*.
+
+For e.g., priority: $P=|r+\gamma \max_a Q(S_{t+1},a) - Q(S_t, A_t)|$.
+
+![[Cheat sheet 17.png|center]]
+
+
+Up to 8.5
 
 # Summary
 
