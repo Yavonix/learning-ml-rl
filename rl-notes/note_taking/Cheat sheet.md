@@ -763,8 +763,23 @@ For e.g., priority: $P=|r+\gamma \max_a Q(S_{t+1},a) - Q(S_t, A_t)|$.
 
 ![[Cheat sheet 17.png|center]]
 
+## Expected vs Sample Updates
+Recall sample vs expected updates for $q_*$:
+- Expected update:
+$$Q(s,a) \leftarrow \sum_{s',r} \hat{p}(s',r \mid s,a)[r+\gamma \max_{a'} Q(s', a')] \tag{8.1}$$
+- Sample update (Q-learning-like update)
+$$Q(s,a) \leftarrow Q(s,a) + \alpha \left[R+\gamma \max_{a'}Q(S', a') - Q(s,a) \right] \tag{8.2}$$
+Expected updates are an exact computation - correctness is limited only by the correctness of $Q(s',a')$ at the successor states while sample updates also suffer from sampling error.
 
-Up to 8.5
+The sample update is however cheaper computationally. Let $b$ be the *branching factor* (number of possible next states $s'$ for which $\hat{p}(s' \mid s,a)\gt 0$), then the expected update of a state-action pair requires around $b$ times as much computation.
+
+For very high branching factors, sample updates appear far more preferable: (sample updates reduce error according to $\sqrt{\frac{b-1}{bt}}$ where $t$ is the number of sample updates that have been performed).
+![[Cheat sheet 18.png|center]]
+
+
+
+Up to exercise 8.6 and ch 8.6 trajectory sampling
+
 
 # Summary
 
