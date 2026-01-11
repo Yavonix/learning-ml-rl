@@ -777,8 +777,138 @@ For very high branching factors, sample updates appear far more preferable: (sam
 ![[Cheat sheet 18.png|center]]
 
 
+## Trajectory Sampling
+>[!error] TODO
+## Heuristic Search
 
-Up to exercise 8.6 and ch 8.6 trajectory sampling
+In the context of Reinforcement Learning (RL), Heuristic Search is essentially Decision-Time Planning.
+
+Instead of just "generating episodes" (which implies running blindly until the end), heuristic search usually builds a tree of possibilities starting from your current state St​.
+- You look ahead: "If I do A, then B happens. If I do C, then D happens."
+- You explore the immediate future deeply, rather than the distant past.
+
+"Updating our Q table" -> Backing Up Values
+- In standard Q-learning, we update values based on one step of real experience.
+- In Heuristic Search, we go deep into the tree, find the values at the leaf nodes (often using our existing, approximate value function), and then back them up to the root.
+- This gives the current state St​ a highly accurate value estimate, much better than the "average" estimate stored in your Q-table.
+
+
+
+# Function Approximation
+We now move from a tabular value function to a parameterised functional form with weight vector $\mathbf{w} \in \mathbb{R}^d$. Such that $\hat{v}(s, \mathbf{w}) \approx v_\pi(s)$.  
+
+## Value-function Approximation
+Let us redefine the notation of $v(S_{t}) \leftarrow v(S_{t}) + \alpha[ R_{t+1} + \gamma V(S_{t+1}) -V(S_t)]$ as $v(S_t) \mapsto R_{t+1} +\gamma V(S_{t+1})$.
+
+## The Prediction Objective ($\overline{VE}$)
+Let us define a state distribution $\mu(s)\ge 0, \sum_s \mu(s)=1$ representing how much we care about the error in each state s.
+
+Weighting over the state space by $\mu$ we obtain a natural objective function the *Mean Squared Value Error* denoted $\overline{VE}$:
+$$
+\overline{VE}\doteq \sum_{s\in\mathcal{S}} \mu(s) \left[v_\pi(s) - \hat{v}(s, \mathbf{w}) \right]^2 \tag{9.1}
+$$
+Often $\mu(s)$ is chosen to be the fraction of time spent in $s$. (Called the *on-policy distribution*). For continuing tasks $\mu(s)$ is chosen to be a stationary distribution. If we had a nonstationary distribution in continuing tasks the target would constantly vary making convergence very difficult and potentially leading to catastrophic forgetting.
+
+Let:
+- $h(s)$ be the probability that an episode begins in each state $s$.
+- $\eta(s)$ be the number of time steps spent on average in a state $s$ in a single episode.
+Then time is spent in a state $s$ if the episode starts in $s$ or if transitions are made into $s$ from a preceding state $\bar{s}$:
+$$
+\eta(s) = h(s) + \sum_{\bar{s}} \eta(\bar s)\sum_a \pi(a \mid \bar s)p(s \mid \bar s, a),\qquad \text{for all}\ s \in \mathcal S \tag{9.2}
+$$
+The on-policy distribution is the fraction of time spent in each state normalised to sum to one:
+$$
+\mu(s) = \frac{\eta(s)}{\sum_{s'} \eta(s')} \tag{9.3}
+$$
+In the context of discounting, we have:
+$$
+\eta(s) = h(s) + \gamma \sum_{\bar{s}} \eta(\bar s)\sum_a \pi(a \mid \bar s)p(s \mid \bar s, a),\qquad \text{for all}\ s \in \mathcal S
+$$
+
+## Stochastic-gradient and Semi-gradient Methods
+
+We adjust the weight vector after each example by a small amount in the direction that would most reduce the error on that example:
+$$
+\begin{align}
+\mathbf{w}_{t+1} &\doteq \mathbf{w}_t - \frac{1}{2} \alpha \nabla\left[ v_\pi(S_t) - \hat{v}(S_t, \mathbf{w}_t) \right]^2 \tag{9.4}\\
+&= \mathbf{w}_t + \alpha \left[v_\pi (S_t) - \hat{v}(S_t, \mathbf{w}_t) \right] \nabla \hat{v}(S_t, \mathbf{w}_t) \tag{9.5}
+\end{align}
+$$
+So you may note that for our purposes we don't have $v_\pi(S_t)$ and therefore will be relying on bootstrapping ($R_{t+1} +\gamma \hat{v}(S_{t+1}, \mathbf{w}_t)$), but in the 9.5 we don't actually take the derivative of the target. The reason we do this is for simplicity. Because we're not fully differentiating the target we call this a *semi-gradient* method. More on this:
+
+We now turn to the case where the target output $U_t \in \mathbb{R}$ of the $t$th training example is not the true value $v_\pi(S_t)$ but some approximation to it. For e.g., $U_t$ may be a noise-corrupted version of v$_\pi(S_t)$ or some bootstrapping target. In these cases we cannot perform the exact update (9.5) as $v_\pi(S_t)$ is unknown. This yields the following general SGD method for state-value prediction:
+$$
+\mathbf{w}_{t+1} \doteq \mathbf{w}_t + \alpha \left[U_t - \hat{v}(S_t, \mathbf{w}_t)\right] \nabla \hat{v}(S_t, \mathbf{w}_t) \tag{9.7}
+$$
+If $U_t$ is an _unbiased_ estimate, that is, if $\mathbb{E}[U_t | S_t = s] = v_{\pi}(S_t)$, for each $t$, then $\mathbf{w}_t$ is **guaranteed** to converge to a local optimum under the usual stochastic approximation conditions (2.7) for decreasing $\alpha$.
+
+The Monte-Carlo target $U_t \doteq G_t$ is by definition an unbiased estimate of $v_\pi(S_t)$. Pseudocode below:
+![[Cheat sheet 19.png|center|half]]
+
+The same **guarantees** are not obtained if a bootstrapping estimate of $v_\pi(S_t)$ is used. Bootstrapping or DP methods all depend on the current value of the weight vector $\mathbf{w}_t$ which implies that they will be biased and will not produce a true gradient-descent method. Accordingly they are called *semi-gradient* methods.
+
+While *semi-gradient* (bootstrapping) methods do not converge as robustly as gradient methods, they do converge reliably in important cases (such as the linear case) as well as converging much quicker (as seen in TD learning). They also allow learning to be continual and online, without waiting for the end of an episode.
+
+A prototypical *semi-gradient* method is TD(0): $U_t \doteq R_{t+1} + \gamma \hat v (S_{t+1}, \mathbf{w})$:
+![[Cheat sheet 20.png|center|half]]
+## Linear Methods
+We define a function $\mathbf{x}$: $x_i : \mathcal S \rightarrow \mathbb{R}$. I.e., $x_i(s)$ extracts feature $i$ from the state $s$.
+
+We then define the state-value function under linear methods as the inner product between $\mathbf w$ and $\mathbf x(s)$:
+$$
+\hat v(s, \mathbf w) \doteq \mathbf w^\top \mathbf x(s) \doteq \sum_{i=1}^d w_i x_i(s) \tag{9.8}
+$$
+Then the gradient of the approximate value function with respect to $\mathbf w$ is:
+$$
+\nabla \hat{v}(s, \mathbf w) = \mathbf x(s)
+$$
+Thus in the linear case the general SGD update (9.7) reduces to:
+$$
+\mathbf w_{t+1} \doteq \mathbf w_t + \alpha \left[U_t - \hat v(S_t, \mathbf w_t) \right] \mathbf x(S_t)
+$$
+Moreover in the linear case there is only one optimum, therefore any method that is guaranteed to converge to or near a local optimum is automatically guaranteed to converge to or near the global optimum.
+
+Expanding out 9.8:
+$$\begin{align} 
+\mathbf{w}_{t+1} &\doteq \mathbf{w}_t + \alpha \left( R_{t+1} + \gamma \mathbf{w}_t^\top \mathbf{x}_{t+1} - \mathbf{w}_t^\top \mathbf{x}_t \right) \mathbf{x}_t \tag{9.9} \\ 
+&= \mathbf{w}_t + \alpha \left( R_{t+1} \mathbf{x}_t - \mathbf{x}_t ( \mathbf{x}_t - \gamma \mathbf{x}_{t+1} )^\top \mathbf{w}_t \right), 
+\end{align}$$
+
+When we reach steady state, the expected next weight vector can be written as:
+$$\mathbb{E}[\mathbf{w}_{t+1} | \mathbf{w}_t] = \mathbf{w}_t + \alpha(\mathbf{b} - \mathbf{A}\mathbf{w}_t) \tag{9.10}$$
+where
+$$\mathbf{b} \doteq \mathbb{E}[R_{t+1} \mathbf{x}_t] \in \mathbb{R}^d \quad \text{and} \quad \mathbf{A} \doteq \mathbb{E}[\mathbf{x}_t (\mathbf{x}_t - \gamma \mathbf{x}_{t+1})^\top] \in \mathbb{R}^d \times \mathbb{R}^d \tag{9.11}$$
+From (9.10) it is clear that, if the system converges, it must converge to the weight vector $\mathbf{w}_{\text{TD}}$ at which
+$$\begin{aligned} 
+\mathbf{b} - \mathbf{A}\mathbf{w}_{\text{TD}} &= \mathbf{0} \\ 
+\Rightarrow \mathbf{b} &= \mathbf{A}\mathbf{w}_{\text{TD}} \\ 
+\Rightarrow \mathbf{w}_{\text{TD}} &\doteq \mathbf{A}^{-1} \mathbf{b}. 
+\end{aligned} \tag{9.12}$$
+**That is to say** that TD converges to a fixed point (the *TD fixed point*).
+
+> [!error]
+> Might be worth going over the Proof of Convergence of Linear TD(0)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # Summary
@@ -819,6 +949,7 @@ $$
 $$
 Q(S_t, A_t) \leftarrow Q(S_t, A_t) + \alpha [G_t - Q(S_t, A_t)]
 $$
+
 **Off Policy Monte Carlo**
 Note $W$ is updated **after** the $Q$ update here. This is because $Q(S_t​,A_t​)$ estimates the value conditional on taking $A_t​$, so we do not re-weight the probability of At​ occurring, we only re-weight the subsequent trajectory.
 $$

@@ -834,3 +834,6 @@ Values of distant shortcuts never "flow back" to the agents current position. I.
 
 8.5
 Store each transition result in the table as usual and weigh each result by how often they have been experienced. Moreover the weighting of all results should be decayed such that the newer ones have a higher "weighting"
+
+8.6
+Strengthens the argument as we can expend more computational resources on the updates that matter most as opposed to computing the relative contribution of all next states and rewards including those with low importance.
