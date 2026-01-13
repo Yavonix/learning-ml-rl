@@ -540,6 +540,49 @@ Monte Carlo error can be written as a sum of TD errors:
 $$\begin{align} G_t - V(S_t) &= R_{t+1} + \gamma G_{t+1} - V(S_t) + \gamma V(S_{t+1}) - \gamma V(S_{t+1}) \tag{from (3.9)} \\ &= \delta_t + \gamma(G_{t+1} - V(S_{t+1})) \\ &= \delta_t + \gamma \delta_{t+1} + \gamma^2(G_{t+2} - V(S_{t+2})) \\ &= \delta_t + \gamma \delta_{t+1} + \gamma^2 \delta_{t+2} + \dots + \gamma^{T-t-1}\delta_{T-1} + \gamma^{T-t}(G_T - V(S_T)) \\ &= \delta_t + \gamma \delta_{t+1} + \gamma^2 \delta_{t+2} + \dots + \gamma^{T-t-1}\delta_{T-1} + \gamma^{T-t}(0 - 0) \\ &= \sum_{k=t}^{T-1} \gamma^{k-t} \delta_k. \tag{6.6} \end{align}$$
 If $V$ is updated during the episode, then the identity is not exact. If the step size is small then it may still hold approximately.
 
+## On Policy TD Control
+### SARSA
+Effectively learn state-action pairs as opposed to state values.
+$$
+Q(S_t, A_t) \leftarrow Q(S_t, A_t) + \alpha[R_{t+1} + \gamma Q(S_{t+1}, A_{t+1}) - Q(S_t, A_t)] \tag{6.7}
+$$
+If $S_{t+1}$ is terminal, then $Q(S_{t+1}, A_{t+1})$ is defined as zero.
+
+![[Cheat sheet 4.png|center]]
+
+
+## Off Policy TD Control
+### Q-Learning
+$$
+Q(S_t, A_t) \leftarrow Q(S_t, A_t) + \alpha[R_{t+1} + \gamma \max_a Q(S_{t+1}, a) - Q(S_t, A_t)] \tag{6.8}
+$$
+![[Cheat sheet 5.png|center]]
+### Expected Sarsa
+$$
+\begin{align}
+Q(S_t, A_t) &\leftarrow Q(S_t, A_t) + \alpha [R_{t+1} + \gamma\mathbb{E}_\pi[Q(S_{t+1}, A_{t+1} \mid S_{t+1}) - Q(S_t, A_t)] \\
+&\leftarrow Q(S_t, A_t) + \alpha[R_{t+1} + \gamma \sum_a \pi(a\mid S_{t+1}) Q(S_{t+1}, a) - Q(S_t, A_t)] \tag{6.9}
+\end{align}
+$$
+- More computational than Sarsa
+- Removes variance due to random selection of $A_{t+1}$
+
+Why is this better? Say you are at state A and take action a to reach state B.
+In Sarsa, if your next action at B is randomly selected to be a terrible move, the value of your previous state A is massively penalized because of that one unlucky roll.
+In Expected Sarsa, the value of state A is updated based on the weighted average of all possible actions at B. It accounts for the risk of the bad move without being skewed by the random occurrence of it.
+
+## Maximisation Bias and Double Learning
+
+Say you have a MDP with states A and B. The reward from B is given by $\mathcal{N}(-0.1, 1)$. Over time Q-learning will explore several actions from B and store their respective rewards. When at A, having transitioned to B Q-learning will take the maximum state-action value from B which also happens to be the randomly better rewards given from B. Therefore the update at A will be biased to the maximum of the Q-values at B.
+
+A possible solution is to store two Q tables. One Q table could be used to pick the maximum action, while the second Q table could have its state-action value for that action as the target for the update of the first Q table. The lookup in Q2 will not have the maximisation bias present in Q1.
+This gives the update rule:
+$$
+Q_1(S_t, A_t) \leftarrow Q_1(S_t, A_t) + \alpha [R_{t+1} + \gamma Q_2\left(S_{t+1}, \text{arg}\max_a Q_1(S_{t+1}, a)\right) - Q_1(S_t, A_t)] \tag{6.10}
+$$
+![[Cheat sheet 6.png|center]]
+
+
 ## Advantages of TD Prediction Models
 - No transition probabilities required.
 - Can be used with complex environments (don't need to compute every possible next state and weight them as in DP methods).
@@ -551,7 +594,322 @@ If $V$ is updated during the episode, then the identity is not exact. If the ste
 Monte Carlo methods minimise MSE on existing data.
 TD methods minimise  MSE on future data (TD finds estimates that are exactly correct for the maximum-likelihood model of the Markov process).
 
-Up to exercises 6.8, 6.9, 6.10
+# N-Step Bootstrapping
+
+## Prediction
+*n-step return*:
+$$
+G_{t:t+n} \doteq R_{t+1} + \gamma R_{t+2} + \cdots + \gamma^{n-1} R_{t+n} + \gamma^n V_{t+n-1}(S_{t+n}) \tag{7.1}
+$$
+If $t+n \ge T$ (n-step return extends to or beyond termination) then all missing terms are taken as zero and n-step return defined to be equal to the ordinary full return ($G_{t:t+n} \doteq G_t\ \text{if}\ t+n \ge T$).
+
+Therefore the *natural state-value learning algorithm is*:
+$$
+V_{t+n}(S_t) \doteq V_{t+n-1}(S_t) + \alpha \left[G_{t:t+n} - V_{t+n-1}(S_t) \right], \qquad 0\le t < T \tag{7.2}
+$$
+No changes will be made during the first n-1 steps of each episode.
+
+![[Cheat sheet 9.png|center]]
+
+## Control
+
+### N-step Sarsa
+Our shift from prediction to control effectively involves switching states for state-action pairs with the addition of an $\epsilon$-greedy policy.
+
+*N-step returns*:
+$$
+G_{t:t+n} \doteq R_{t+1} + \gamma R_{t+2} + \cdots + \gamma^{n-1}R_{t+n} + \gamma^nQ_{t+n-1}(S_{t+n}, A_{t+n}), \qquad n\ge1, 0\le t \lt T-n \tag{7.4}
+$$
+Therefore the *natural action-state-value learning algorithm is*:
+$$
+Q_{t+n}(S_t, A_t) \doteq Q_{t+n-1}(S_t, A_t) + \alpha \left[G_{t:t+n} - Q_{t+n-1}(S_t, A_t) \right] \tag{7.5}
+$$
+![[Cheat sheet 8.png|center]]
+
+
+N-step Sarsa can be written exactly in terms of novel TD error as:
+$$
+G_{t:t+n} = Q_{t-1=}(S_t, A_t) + \sum_{k=t}^{\min(t+n, T)-1} \gamma^{k-t}\left[R_{k+1} + \gamma Q_k(S_{k+1}, A_{k+1}) - Q_{k-1}(S_k, A_k) \right] \tag{7.6}
+$$
+
+$$
+\begin{align*}
+G_{t:t+n} &= R_{t+1} + \gamma R_{t+2} + \dots + \gamma^{n-1} R_{t+n} + \gamma^n Q_{t+n-1}(S_{t+n}, A_{t+n}) \\
+\\
+&= R_{t+1} + \gamma Q_t(S_{t+1}, A_{t+1}) - Q_{t-1}(S_t, A_t) + Q_{t-1}(S_t, A_t) \\
+&\quad + \gamma R_{t+2} + \dots + \gamma^{n-1} R_{t+n} + \gamma^n Q_{t+n-1}(S_{t+n}, A_{t+n}) - \gamma Q_t(S_{t+1}, A_{t+1}) \\
+\\
+\text{Let } \delta_t &= R_{t+1} + \gamma Q_t(S_{t+1}, A_{t+1}) - Q_{t-1}(S_t, A_t) \\
+\\
+&= \delta_t + Q_{t-1}(S_t, A_t) + \gamma \left[ R_{t+2} + \dots + \gamma^{n-2}R_{t+n} + \gamma^{n-1}Q_{t+n-1}(S_{t+n}, A_{t+n}) - Q_t(S_{t+1}, A_{t+1}) \right] \\
+\\
+&= \delta_t + Q_{t-1}(S_t, A_t) + \gamma \delta_{t+1} + \gamma^2 \delta_{t+2} + \dots \\
+\\
+&= Q_{t-1}(S_t, A_t) + \sum_{k=t}^{\min(t+n, T)-1} \gamma^{k-t} \delta_k
+\end{align*}
+$$
+### Expected Sarsa
+Very similar to Sarsa:
+$$G_{t:t+n} \doteq R_{t+1} + \dots + \gamma^{n-1}R_{t+n} + \gamma^n \bar{V}_{t+n-1}(S_{t+n}), \qquad t+n < T, \tag{7.7}$$
+(with $G_{t:t+n} \doteq G_t$ for $t+n \ge T$) where $\bar{V}_t(s)$ is the _expected approximate value_ of state $s$, using the estimated action values at time $t$, under the target policy:
+$$\bar{V}_t(s) \doteq \sum_a \pi(a|s)Q_t(s, a), \qquad \text{for all } s \in \mathcal{S}. \tag{7.8}$$
+If $s$ is terminal, then its expected approximate value is defined to be zero.
+
+### n-step Off-policy Learning
+When off policy we must once again rescale the return given under the behaviour policy to that of the target policy.
+
+$$V_{t+n}(S_t) \doteq V_{t+n-1}(S_t) + \alpha \rho_{t:t+n-1} [G_{t:t+n} - V_{t+n-1}(S_t)], \qquad 0 \le t < T, \tag{7.9}$$
+where $\rho_{t:t+n-1}$, called the _importance sampling ratio_, is the relative probability under the two policies of taking the $n$ actions from $A_t$ to $A_{t+n-1}$ (cf. Eq. 5.3):
+$$\rho_{t:h} \doteq \prod_{k=t}^{\min(h, T-1)} \frac{\pi(A_k|S_k)}{b(A_k|S_k)}. \tag{7.10}$$
+As for our n-Step Sarsa update, we have the simple off-policy form:
+$$Q_{t+n}(S_t, A_t) \doteq Q_{t+n-1}(S_t, A_t) + \alpha \rho_{t+1:t+n} [G_{t:t+n} - Q_{t+n-1}(S_t, A_t)]  \tag{7.11}$$
+![[Cheat sheet 10.png|center]]
+
+## n-Step Tree Backup Algorithm
+
+Effectively taking the expected value over all the next actions like in expected Sarsa but for every step not just the last.
+
+I.e. for the following backup diagram:
+- Each first-level action a contributes with a weight of $\pi(a|S_{t+1})$, except that the action actually taken, $A_{t+1}$, does not contribute at all.
+- Its probability $\pi(A_{t+1}\mid S_{t+1})$ is used to weight all second-level action values. Thus each non-selected second-level action $a'$ contributes weight $\pi(A_{t+1} \mid S_{t+1})\pi(a'\mid S_{t+2})$.
+- And so on.
+
+![[Cheat sheet 11.png|center]]
+
+So in developing the equations, one step tree backup target matches that of Expected Sarsa:
+$$
+G_{t:t+1} \doteq R_{t+1} + \gamma \sum_a \pi(a\mid S_{t+1})Q_t(S_{t+1},a) \tag{7.15}
+$$
+for $t \lt T-1$.
+
+And the two step tree-backup return is:
+$$
+\begin{align*}
+G_{t:t+2} &\doteq R_{t+1} + \gamma \sum_{a \neq A_{t+1}} \pi(a|S_{t+1})Q_{t+1}(S_{t+1}, a) \\
+&\quad\quad + \gamma\pi(A_{t+1}|S_{t+1}) \left( R_{t+2} + \gamma \sum_{a} \pi(a|S_{t+2})Q_{t+1}(S_{t+2}, a) \right) \\
+&= R_{t+1} + \gamma \sum_{a \neq A_{t+1}} \pi(a|S_{t+1})Q_{t+1}(S_{t+1}, a) + \gamma\pi(A_{t+1}|S_{t+1})G_{t+1:t+2},
+\end{align*}
+$$
+for $t \lt T-2$.
+
+Which we can then turn into a recursive definition:
+$$
+G_{t:t+n} \doteq R_{t+1} + \gamma \sum_{a \neq A_{t+1}} \pi(a|S_{t+1}) Q_{t+n-1}(S_{t+1}, a) + \gamma \pi(A_{t+1}|S_{t+1}) G_{t+1:t+n}, \tag{7.16}
+$$
+for $t \lt T-1, n \ge 2$ with $n=1$ being handled by $(7.15)$ except for $G_{T-1:t+n} \doteq R_T$.
+
+This target is then used with the usual action-value update rule from $n$-step Sarsa:
+$$Q_{t+n}(S_t, A_t) \doteq Q_{t+n-1}(S_t, A_t) + \alpha \left[ G_{t:t+n} - Q_{t+n-1}(S_t, A_t) \right],$$
+for $0 \le t < T$, while the values of all other state–action pairs remain unchanged: $Q_{t+n}(s, a) = Q_{t+n-1}(s, a)$, for all $s, a$ such that $s \neq S_t$ or $a \neq A_t$.
+
+![[Cheat sheet 12.png|center|half]]
+
+
+## Generalising
+
+We can generalise n-step Sarsa, expected Sarsa and tree-backup Sarsa into one algorithm: n-step $Q(\sigma)$.
+
+![[Cheat sheet 13.png|center|half]]
+>[!error] TODO
+> Go over equations used
+
+The algorithm:
+![[Cheat sheet 14.png|center|half]]
+
+# Planning
+## Models and Planning
+Types of models:
+- Distribution models: produce a description of all possibilities and their probabilities (used in dynamic programming).
+- Sample models: produce just one of the possibilities sampled according to the probabilities.
+
+Online planning: performed while interacting with the environment.
+
+Within a planning agent, there are at least two roles for real experience:
+- it can be used to improve the model (*model learning*)
+- it can be used to improve the value function and policy (*direct reinforcement learning*)
+
+Therefore experience can improve value functions and policy either directly or indirectly through the model (called *indirect reinforcement learning*).
+
+Q-learning vs random sample one-step tabular Q-planning. In the latter we draw a random state and action, perform one update, then repeat - we don't finish the episode.
+
+## Dyna-Q
+Dyna-Q:
+- Planning: random-sample one-step tabular Q-planning. Only samples from state-action pairs that have been previously experienced.
+- Model-learning: after each experienced transition, the model records the transition in a table entry for $S_t, A_t$ and the experienced $R_{t+1}, S_{t+1}$. Therefore if the model is queried with a state-action pair that has been experienced before, it simply returns the last-observed next state and next reward as its prediction.
+- *search control* the act of selecting starting state and actions for simulated experiences generate by the model.
+- Direct-RL: one-step tabular Q-learning
+
+In other words - Dyna-Q:
+1. Planning - random-sample one-step tabular Q-planning
+	- Select state and action at random, send them to a sample model, generate return
+	- *search control* the act of selecting starting state and actions for simulated experiences generate by the model.
+2. Direct-RL - one-step tabular Q-learning
+	- After a real transition in the environment, observe result $S_t, A_t \rightarrow R_{t+1}, S_{t+1}$, update policy/value function.
+3. Model Learning - tabular - $M(S_t, A_t) \leftarrow R_{t+1}, S_{t+1}$
+	- Used for planning
+
+![[Cheat sheet 15.png|center]]
+In pseudocode:
+![[Cheat sheet 16.png|center]]
+
+Dyna-Q+:
+- If the modeled reward for a transition is $r$ and the transition has not been tried in $\tau$ time steps, then **planning** updates are done as if that transition produced a reward of $r+k\sqrt{\tau}$.
+- The idea is to encourage exploration during **direct-RL**.
+
+
+During planning, we may end up sampling state-action pairs that are not very useful. For instance in a maze world, after the first episode direct-RL will have only stored one state-action pair value. For that value to be propagated, state-action that immediately lead to that state will need to be selected - this may not be a common occurrence. We need a way to prioritise updates of state-actions immediately preceding state-actions that have been recently updated - we need a measure of urgency. This idea is called *prioritised sweeping*.
+
+For e.g., priority: $P=|r+\gamma \max_a Q(S_{t+1},a) - Q(S_t, A_t)|$.
+
+![[Cheat sheet 17.png|center]]
+
+## Expected vs Sample Updates
+Recall sample vs expected updates for $q_*$:
+- Expected update:
+$$Q(s,a) \leftarrow \sum_{s',r} \hat{p}(s',r \mid s,a)[r+\gamma \max_{a'} Q(s', a')] \tag{8.1}$$
+- Sample update (Q-learning-like update)
+$$Q(s,a) \leftarrow Q(s,a) + \alpha \left[R+\gamma \max_{a'}Q(S', a') - Q(s,a) \right] \tag{8.2}$$
+Expected updates are an exact computation - correctness is limited only by the correctness of $Q(s',a')$ at the successor states while sample updates also suffer from sampling error.
+
+The sample update is however cheaper computationally. Let $b$ be the *branching factor* (number of possible next states $s'$ for which $\hat{p}(s' \mid s,a)\gt 0$), then the expected update of a state-action pair requires around $b$ times as much computation.
+
+For very high branching factors, sample updates appear far more preferable: (sample updates reduce error according to $\sqrt{\frac{b-1}{bt}}$ where $t$ is the number of sample updates that have been performed).
+![[Cheat sheet 18.png|center]]
+
+
+## Trajectory Sampling
+>[!error] TODO
+## Heuristic Search
+
+In the context of Reinforcement Learning (RL), Heuristic Search is essentially Decision-Time Planning.
+
+Instead of just "generating episodes" (which implies running blindly until the end), heuristic search usually builds a tree of possibilities starting from your current state St​.
+- You look ahead: "If I do A, then B happens. If I do C, then D happens."
+- You explore the immediate future deeply, rather than the distant past.
+
+"Updating our Q table" -> Backing Up Values
+- In standard Q-learning, we update values based on one step of real experience.
+- In Heuristic Search, we go deep into the tree, find the values at the leaf nodes (often using our existing, approximate value function), and then back them up to the root.
+- This gives the current state St​ a highly accurate value estimate, much better than the "average" estimate stored in your Q-table.
+
+
+
+# Function Approximation
+We now move from a tabular value function to a parameterised functional form with weight vector $\mathbf{w} \in \mathbb{R}^d$. Such that $\hat{v}(s, \mathbf{w}) \approx v_\pi(s)$.  
+
+## Value-function Approximation
+Let us redefine the notation of $v(S_{t}) \leftarrow v(S_{t}) + \alpha[ R_{t+1} + \gamma V(S_{t+1}) -V(S_t)]$ as $v(S_t) \mapsto R_{t+1} +\gamma V(S_{t+1})$.
+
+## The Prediction Objective ($\overline{VE}$)
+Let us define a state distribution $\mu(s)\ge 0, \sum_s \mu(s)=1$ representing how much we care about the error in each state s.
+
+Weighting over the state space by $\mu$ we obtain a natural objective function the *Mean Squared Value Error* denoted $\overline{VE}$:
+$$
+\overline{VE}\doteq \sum_{s\in\mathcal{S}} \mu(s) \left[v_\pi(s) - \hat{v}(s, \mathbf{w}) \right]^2 \tag{9.1}
+$$
+Often $\mu(s)$ is chosen to be the fraction of time spent in $s$. (Called the *on-policy distribution*). For continuing tasks $\mu(s)$ is chosen to be a stationary distribution. If we had a nonstationary distribution in continuing tasks the target would constantly vary making convergence very difficult and potentially leading to catastrophic forgetting.
+
+Let:
+- $h(s)$ be the probability that an episode begins in each state $s$.
+- $\eta(s)$ be the number of time steps spent on average in a state $s$ in a single episode.
+Then time is spent in a state $s$ if the episode starts in $s$ or if transitions are made into $s$ from a preceding state $\bar{s}$:
+$$
+\eta(s) = h(s) + \sum_{\bar{s}} \eta(\bar s)\sum_a \pi(a \mid \bar s)p(s \mid \bar s, a),\qquad \text{for all}\ s \in \mathcal S \tag{9.2}
+$$
+The on-policy distribution is the fraction of time spent in each state normalised to sum to one:
+$$
+\mu(s) = \frac{\eta(s)}{\sum_{s'} \eta(s')} \tag{9.3}
+$$
+In the context of discounting, we have:
+$$
+\eta(s) = h(s) + \gamma \sum_{\bar{s}} \eta(\bar s)\sum_a \pi(a \mid \bar s)p(s \mid \bar s, a),\qquad \text{for all}\ s \in \mathcal S
+$$
+
+## Stochastic-gradient and Semi-gradient Methods
+
+We adjust the weight vector after each example by a small amount in the direction that would most reduce the error on that example:
+$$
+\begin{align}
+\mathbf{w}_{t+1} &\doteq \mathbf{w}_t - \frac{1}{2} \alpha \nabla\left[ v_\pi(S_t) - \hat{v}(S_t, \mathbf{w}_t) \right]^2 \tag{9.4}\\
+&= \mathbf{w}_t + \alpha \left[v_\pi (S_t) - \hat{v}(S_t, \mathbf{w}_t) \right] \nabla \hat{v}(S_t, \mathbf{w}_t) \tag{9.5}
+\end{align}
+$$
+So you may note that for our purposes we don't have $v_\pi(S_t)$ and therefore will be relying on bootstrapping ($R_{t+1} +\gamma \hat{v}(S_{t+1}, \mathbf{w}_t)$), but in the 9.5 we don't actually take the derivative of the target. The reason we do this is for simplicity. Because we're not fully differentiating the target we call this a *semi-gradient* method. More on this:
+
+We now turn to the case where the target output $U_t \in \mathbb{R}$ of the $t$th training example is not the true value $v_\pi(S_t)$ but some approximation to it. For e.g., $U_t$ may be a noise-corrupted version of v$_\pi(S_t)$ or some bootstrapping target. In these cases we cannot perform the exact update (9.5) as $v_\pi(S_t)$ is unknown. This yields the following general SGD method for state-value prediction:
+$$
+\mathbf{w}_{t+1} \doteq \mathbf{w}_t + \alpha \left[U_t - \hat{v}(S_t, \mathbf{w}_t)\right] \nabla \hat{v}(S_t, \mathbf{w}_t) \tag{9.7}
+$$
+If $U_t$ is an _unbiased_ estimate, that is, if $\mathbb{E}[U_t | S_t = s] = v_{\pi}(S_t)$, for each $t$, then $\mathbf{w}_t$ is **guaranteed** to converge to a local optimum under the usual stochastic approximation conditions (2.7) for decreasing $\alpha$.
+
+The Monte-Carlo target $U_t \doteq G_t$ is by definition an unbiased estimate of $v_\pi(S_t)$. Pseudocode below:
+![[Cheat sheet 19.png|center|half]]
+
+The same **guarantees** are not obtained if a bootstrapping estimate of $v_\pi(S_t)$ is used. Bootstrapping or DP methods all depend on the current value of the weight vector $\mathbf{w}_t$ which implies that they will be biased and will not produce a true gradient-descent method. Accordingly they are called *semi-gradient* methods.
+
+While *semi-gradient* (bootstrapping) methods do not converge as robustly as gradient methods, they do converge reliably in important cases (such as the linear case) as well as converging much quicker (as seen in TD learning). They also allow learning to be continual and online, without waiting for the end of an episode.
+
+A prototypical *semi-gradient* method is TD(0): $U_t \doteq R_{t+1} + \gamma \hat v (S_{t+1}, \mathbf{w})$:
+![[Cheat sheet 20.png|center|half]]
+## Linear Methods
+We define a function $\mathbf{x}$: $x_i : \mathcal S \rightarrow \mathbb{R}$. I.e., $x_i(s)$ extracts feature $i$ from the state $s$.
+
+We then define the state-value function under linear methods as the inner product between $\mathbf w$ and $\mathbf x(s)$:
+$$
+\hat v(s, \mathbf w) \doteq \mathbf w^\top \mathbf x(s) \doteq \sum_{i=1}^d w_i x_i(s) \tag{9.8}
+$$
+Then the gradient of the approximate value function with respect to $\mathbf w$ is:
+$$
+\nabla \hat{v}(s, \mathbf w) = \mathbf x(s)
+$$
+Thus in the linear case the general SGD update (9.7) reduces to:
+$$
+\mathbf w_{t+1} \doteq \mathbf w_t + \alpha \left[U_t - \hat v(S_t, \mathbf w_t) \right] \mathbf x(S_t)
+$$
+Moreover in the linear case there is only one optimum, therefore any method that is guaranteed to converge to or near a local optimum is automatically guaranteed to converge to or near the global optimum.
+
+Expanding out 9.8:
+$$\begin{align} 
+\mathbf{w}_{t+1} &\doteq \mathbf{w}_t + \alpha \left( R_{t+1} + \gamma \mathbf{w}_t^\top \mathbf{x}_{t+1} - \mathbf{w}_t^\top \mathbf{x}_t \right) \mathbf{x}_t \tag{9.9} \\ 
+&= \mathbf{w}_t + \alpha \left( R_{t+1} \mathbf{x}_t - \mathbf{x}_t ( \mathbf{x}_t - \gamma \mathbf{x}_{t+1} )^\top \mathbf{w}_t \right), 
+\end{align}$$
+
+When we reach steady state, the expected next weight vector can be written as:
+$$\mathbb{E}[\mathbf{w}_{t+1} | \mathbf{w}_t] = \mathbf{w}_t + \alpha(\mathbf{b} - \mathbf{A}\mathbf{w}_t) \tag{9.10}$$
+where
+$$\mathbf{b} \doteq \mathbb{E}[R_{t+1} \mathbf{x}_t] \in \mathbb{R}^d \quad \text{and} \quad \mathbf{A} \doteq \mathbb{E}[\mathbf{x}_t (\mathbf{x}_t - \gamma \mathbf{x}_{t+1})^\top] \in \mathbb{R}^d \times \mathbb{R}^d \tag{9.11}$$
+From (9.10) it is clear that, if the system converges, it must converge to the weight vector $\mathbf{w}_{\text{TD}}$ at which
+$$\begin{aligned} 
+\mathbf{b} - \mathbf{A}\mathbf{w}_{\text{TD}} &= \mathbf{0} \\ 
+\Rightarrow \mathbf{b} &= \mathbf{A}\mathbf{w}_{\text{TD}} \\ 
+\Rightarrow \mathbf{w}_{\text{TD}} &\doteq \mathbf{A}^{-1} \mathbf{b}. 
+\end{aligned} \tag{9.12}$$
+**That is to say** that TD converges to a fixed point (the *TD fixed point*).
+
+> [!error]
+> Might be worth going over the Proof of Convergence of Linear TD(0)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Summary
 
@@ -591,6 +949,7 @@ $$
 $$
 Q(S_t, A_t) \leftarrow Q(S_t, A_t) + \alpha [G_t - Q(S_t, A_t)]
 $$
+
 **Off Policy Monte Carlo**
 Note $W$ is updated **after** the $Q$ update here. This is because $Q(S_t​,A_t​)$ estimates the value conditional on taking $A_t​$, so we do not re-weight the probability of At​ occurring, we only re-weight the subsequent trajectory.
 $$
@@ -601,6 +960,7 @@ W &\leftarrow W\cdot\frac{\pi(A_t \mid S_t)}{b(A_t \mid S_t)}
 \end{align}
 $$
 ### TD
+#### On Policy
 **SARSA**
 $$
 Q(S_t,A_t) \leftarrow Q(S_t, A_t) + \alpha\left[ R_{t+1} + \gamma Q(S_{t+1}, A_{t+1}) - Q(S_t, A_t) \right]

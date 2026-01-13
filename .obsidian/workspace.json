@@ -8,20 +8,6 @@
         "type": "tabs",
         "children": [
           {
-            "id": "c7834f9d0eb04cf7",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "rl-notes/note_taking/Exercises.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "Exercises"
-            }
-          },
-          {
             "id": "d83b27592d7e4019",
             "type": "leaf",
             "state": {
@@ -34,9 +20,22 @@
               "icon": "lucide-file",
               "title": "Cheat sheet"
             }
+          },
+          {
+            "id": "c7834f9d0eb04cf7",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "rl-notes/note_taking/Exercises.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Exercises"
+            }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -224,36 +223,37 @@
   },
   "active": "d83b27592d7e4019",
   "lastOpenFiles": [
+    "rl-notes/note_taking/attachments/Cheat sheet 20.png",
+    "rl-notes/note_taking/attachments/Cheat sheet 19.png",
     "rl-notes/note_taking/Exercises.md",
     "rl-notes/note_taking/Cheat sheet.md",
+    "rl-notes/note_taking/attachments/Cheat sheet 18.png",
+    "rl-notes/note_taking/attachments/Cheat sheet 17.png",
+    "rl-notes/note_taking/attachments/Cheat sheet 16.png",
+    "rl-notes/note_taking/attachments/Cheat sheet 15.png",
+    "rl-notes/note_taking/attachments/Cheat sheet 14.png",
+    "rl-notes/note_taking/attachments/Cheat sheet 13.png",
+    "rl-notes/note_taking/attachments/Cheat sheet 12.png",
+    "rl-notes/note_taking/attachments/Cheat sheet 11.png",
+    "rl-notes/note_taking/attachments/Cheat sheet 10.png",
+    "rl-notes/code_exercises/testing.ipynb",
+    "rl-notes/code_exercises/exercise_5.12_jax_vec.py",
+    "rl-notes/code_exercises/exercise_5.12_jax.py",
+    "rl-notes/code_exercises/exercise_5.12.py",
+    "rl-notes/code_exercises/exercise_5.12 copy.py",
     "rl-notes/note_taking/Part 1.md",
     "rl-notes/code_exercises/exercise_4.9.ipynb",
     "rl-notes/code_exercises/exercise_4.7.py",
-    "rl-notes/note_taking/attachments/Exercises 1.png",
     "rl-notes/note_taking/RL Notes.md",
-    "rl-notes/note_taking/attachments/Cheat sheet 3.png",
-    "rl-notes/note_taking/attachments/Cheat sheet 2.png",
-    "rl-notes/note_taking/attachments/Cheat sheet 1.png",
-    "rl-notes/note_taking/attachments/Cheat sheet.png",
-    "rl-notes/note_taking/attachments/markov-decision-process-value-example.png",
-    "rl-notes/note_taking/attachments/optimal-action-value-function-example.png",
-    "rl-notes/note_taking/attachments/Exercises.png",
     "d2l-notes/02 prelim/02 prelim.md",
     "014 2802ICT Intelligent Systems/RL/Part 1.md",
     "014 2802ICT Intelligent Systems/RL/Exercises.md",
     "014 2802ICT Intelligent Systems/RL/RL Notes.md",
     "014 2802ICT Intelligent Systems/Lab 03/Practise 2.md",
-    "014 2802ICT Intelligent Systems/RL/images/markov-decision-process-value-example.png",
-    "014 2802ICT Intelligent Systems/RL/images/markov-reward-process-filled.png",
     "014 2802ICT Intelligent Systems/RL/images",
     "014 2802ICT Intelligent Systems/RL/attachments",
     "014 2802ICT Intelligent Systems/RL/Extracts/Chapter 2.pdf",
-    "014 2802ICT Intelligent Systems/RL/Extracts",
-    "014 2802ICT Intelligent Systems/RL/New folder",
     "014 2802ICT Intelligent Systems/Deferred Quiz/Scratchpad.md",
-    "014 2802ICT Intelligent Systems/RL",
-    "014 2802ICT Intelligent Systems/Slides/1-4.pdf",
-    "014 2802ICT Intelligent Systems/Lab 03/Workshop Week 4_CSP.pdf",
     "014 2802ICT Intelligent Systems/Notes 5.md",
     "014 2802ICT Intelligent Systems/Not.md",
     "014 2802ICT Intelligent Systems/Notes 2-4.md",

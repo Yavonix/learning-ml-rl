@@ -655,3 +655,185 @@ We multiply the entire error term because we want to control how much to weight 
 $$
 V(S_t) \leftarrow V(S_t) + \alpha \rho_{t:t}[R_{t+1} + V(S_{t+1}) - V(S_t)]
 $$
+6.8
+$$
+\begin{align} G_t - Q(S_t, A_t) &= R_{t+1} + \gamma G_{t+1} - Q(S_t, A_t) + \gamma Q(S_{t+1}, A_{t+1}) - \gamma Q(S_{t+1}, A_{t+1}) \tag{from (3.9)} \\
+&= \delta_t + \gamma(G_{t+1} - Q(S_{t+1}, A_{t+1})) \\
+&= \delta_t + \gamma \delta_{t+1} + \gamma^2(G_{t+2} - Q(S_{t+2}, A_{t+2})) \\
+&= \delta_t + \gamma \delta_{t+1} + \gamma^2 \delta_{t+2} + \dots + \gamma^{T-t-1}\delta_{T-1} + \gamma^{T-t}((G_{T} - Q(S_{T}, A_{T})) \\
+&= \delta_t + \gamma \delta_{t+1} + \gamma^2 \delta_{t+2} + \dots + \gamma^{T-t-1}\delta_{T-1} + \gamma^{T-t}(0 - 0) \\
+&= \sum_{k=t}^{T-1} \gamma^{k-t} \delta_k. \end{align}
+$$
+
+6.9
+```python
+import numpy as np
+from dataclasses import dataclass, field
+from typing import Type
+import plotly.express as px
+
+State = np.ndarray # x,y
+Reward = np.ndarray # float
+Done = bool
+
+@dataclass
+class Grid:
+    height: np.ndarray = field(default_factory=lambda: np.array(7))
+    wind: np.ndarray =  field(default_factory=lambda: np.array([0,0,0,1,1,1,2,2,1,0]))
+    moveset: np.ndarray = field(default_factory=lambda: np.array([[-1,0], [1,0], [0,-1], [0,1], [-1,-1], [-1, 1], [1,-1], [1,1]]))
+    goal: np.ndarray = field(default_factory=lambda: np.array([7,3]))
+
+    def step(self, state: State, action: int) -> tuple[State, Reward, Done]:
+        state = state.copy() # to prevent modifying original state
+        state[1] = state[1] + self.wind[state[0]]
+        state = state + self.moveset[action]
+        state[0] = np.clip(state[0], 0, self.wind.shape[0] - 1)
+        state[1] = np.clip(state[1], 0, self.height - 1)
+
+        if np.all(state == self.goal):
+            return (state, np.array(0), True)
+        else:
+            return (state, np.array(-1), False)
+    
+    def get_initial_state(self):
+        return np.array([0,3])
+        
+class Sarsa:
+    def __init__(self, env: Grid, epsilon: float = 0.1, alpha: float = 0.5):
+        self.env = env
+        self.Q = np.zeros((env.height,env.wind.shape[0], env.moveset.shape[0]))
+        self.epsilon = epsilon
+        self.alpha = alpha
+        self.episode_count = []
+
+    def select_action(self, state: State):
+        p = np.random.uniform()
+        if p < self.epsilon: # random action
+            return np.random.randint(self.env.moveset.shape[0])
+        else:
+            return int(self.Q[state[1], state[0]].argmax())
+
+    def solve(self):
+        episode_cnt = 0
+        timestep = 0
+        while True:
+            state = self.env.get_initial_state()
+            action = self.select_action(state)
+
+            while True:
+                nxt_state, reward, done = self.env.step(state, action)
+                nxt_action = self.select_action(nxt_state)
+
+                self.episode_count.append(episode_cnt)
+                timestep += 1
+
+                idx = (state[1], state[0], action)
+                # nxt_idx = (nxt_state[1], nxt_state[0], nxt_action) # Sarsa
+                nxt_idx = (nxt_state[1], nxt_state[0], self.Q[nxt_state[1], nxt_state[0]].argmax()) # Q Learning
+                self.Q[idx] = self.Q[idx] + self.alpha * (reward + self.Q[nxt_idx] - self.Q[idx])
+
+                if done:
+                    break
+
+                state = nxt_state
+                action = nxt_action
+            
+            episode_cnt += 1
+
+            if timestep >= 8000:
+                break
+
+env = Grid()
+solver = Sarsa(env)
+solver.solve()
+
+```
+
+6.10
+Same as 6.9 but with modified step function:
+```python
+    def step(self, state: State, action: int) -> tuple[State, Reward, Done]:
+        state = state.copy() # to prevent modifying original state
+        state[1] = state[1] + self.wind[state[0]] + (np.random.randint(-1,2) if self.wind[state[0]] != 0 else 0) # 1 cell below or 0 or 1 cell above what is dictated by the wind
+        state = state + self.moveset[action]
+        state[0] = np.clip(state[0], 0, self.wind.shape[0] - 1)
+        state[1] = np.clip(state[1], 0, self.height - 1)
+
+        if np.all(state == self.goal):
+            return (state, np.array(0), True)
+        else:
+            return (state, np.array(-1), False)
+```
+
+6.11
+Q-learning is off policy as the algorithm approximates the optimal policy $\pi_*$ independent of the behaviour policy.  
+
+6.12
+If action selection is greedy for both the behaviour and target policies in Sarsa, then no Q-learning is not the exact same as Sarsa. In Q-learning the behaviour policy is different to the target policy to encourage exploration.
+
+6.13*
+
+Need to do 6.13 and 6.14
+
+7.1
+$$
+\begin{aligned}
+G_{t:t+n} - V(S_t) &= R_{t+1} + \gamma R_{t+2} + \dots + \gamma^{n-1} R_{t+n} + \gamma^n V_{t+n-1}(S_{t+n}) - V(S_t) \\
+\\
+&= R_{t+1} + \gamma G_{t+1:t+n} - V(S_t) + \gamma V(S_{t+1}) - \gamma V(S_{t+1}) \\
+\\
+&= \delta_t + \gamma [ G_{t+1:t+n} - V(S_{t+1}) ] \\
+\\
+&= \sum_{k=t}^{t+n-1} \gamma^k \cdot \delta_k
+\end{aligned}
+$$
+
+7.2
+> [!error] TODO
+
+I expect that the method using the sum of TD errors will be slightly worse as we would be using older estimates of the values when performing updates.
+
+7.3
+A larger random walk was used so that episodes which n-step TD operated over would actually be long enough for different n parameters to yield different computations.
+
+7.4
+$$
+\begin{align*}
+G_{t:t+n} &= R_{t+1} + \gamma R_{t+2} + \dots + \gamma^{n-1} R_{t+n} + \gamma^n Q_{t+n-1}(S_{t+n}, A_{t+n}) \\
+\\
+&= [R_{t+1} + \gamma Q_t(S_{t+1}, A_{t+1})] - \gamma Q_t(S_{t+1}, A_{t+1}) - [Q_{t-1}(S_t, A_t)] + \underbrace{Q_{t-1}(S_t, A_t)}_{\text{Out to front}} \\
+&\quad + \gamma R_{t+2} + \dots + \gamma^{n-1} R_{t+n} + \gamma^n Q_{t+n-1}(S_{t+n}, A_{t+n}) \\
+\\
+\text{let } \delta &= R_{t+1} + \gamma Q_t(S_{t+1}, A_{t+1}) - Q_{t-1}(S_t, A_t) \\
+\\
+&= \delta + \gamma [\underbrace{R_{t+2} + \dots + \gamma^{n-2}R_{t+n} + \gamma^{n-1}Q_{t+n-1}(S_{t+n}, A_{t+n}) - Q_t(S_{t+1}, A_{t+1})}_{\dots}] \\
+&\quad + Q_{t-1}(S_t, A_t) \\
+\\
+&= \delta + \gamma [\delta + \gamma R_{t+3} + \dots + \gamma^{n-2} R_{t+n} + \gamma^{n-1} Q_{t+n-1}(S_{t+n}, A_{t+n}) - \gamma Q_{t+1}(S_{t+2}, A_{t+2})] \\
+&\quad + Q_{t-1}(S_t, A_t) \\
+\\
+&= \sum_{k=t}^{\min(t+n, T)-1} (\gamma^{k-t} \cdot \delta_k) + Q_{t-1}(S_t, A_t)
+\end{align*}
+$$
+
+7.11
+
+NEED TO DO
+
+8.1
+No because in the dyna method the planning stage allow the value/policy to converge to the optimal given the single episode while a single episode run with n-TD, while better than TD(0), would not allow the value to converge as closely within that single episode.
+
+8.2
+Dyna-Q+ and Dyna-Q may have both found suboptimal policies at the start. Over time the transition bonus in Dyna-Q+ encouraged exploration and quickly allowed it to converge to the optimal policy. Dyna-Q on the other hand took longer to converge to this policy due to its lack of exploration.
+
+8.3
+Dyna+ performance degrades as the policy starts to explore states that have not been visited in a long time. I.e. it has already discovered the optimal policy but wastes more time exploring.
+
+8.4
+Values of distant shortcuts never "flow back" to the agents current position. I.e., state 10 hasnt been visited in a while. If the reward applies during planning then the reward will propagate through 5,6,7,8,9. If the agent is at 5 it will see this reward and follow this path. Alternatively if the reward bonus is only local it will never "see" this state unless at 9.
+
+8.5
+Store each transition result in the table as usual and weigh each result by how often they have been experienced. Moreover the weighting of all results should be decayed such that the newer ones have a higher "weighting"
+
+8.6
+Strengthens the argument as we can expend more computational resources on the updates that matter most as opposed to computing the relative contribution of all next states and rewards including those with low importance.
