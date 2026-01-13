@@ -889,12 +889,23 @@ $$\begin{aligned}
 > [!error]
 > Might be worth going over the Proof of Convergence of Linear TD(0)
 
+At the TD fixed point, the $\overline{VE}$ is within a bounded expansion of the lowest possible error:
+$$
+\overline{VE}(\textbf w_{TD}) \le \frac{1}{1-\gamma} \min_{\textbf w} \overline{VE}(w) \tag {9.14}
+$$
+This applies to other on-policy bootstrapping methods as well (linear semi-gradient DP, semi-gradient Sarsa(0)).
 
-
-
-
-
-
+Pseudocode for n-step semi-gradient TD for estimating $\hat{v} \approx v_\pi$:
+![[Cheat sheet 21.png|center|half]]
+Key equations to the algorithm are:
+- Analogous to 7.2:
+$$
+\mathbf{w}_{t+n} \doteq \mathbf{w}_{t+n-1} + \alpha \left[ G_{t:t+n} - \hat{v}(S_t, \mathbf{w}_{t+n-1}) \right] \nabla \hat{v}(S_t, \mathbf{w}_{t+n-1}), \quad 0 \leq t < T \tag{9.15}
+$$
+- Analogous to 7.1:
+$$
+G_{t:t+n} \doteq R_{t+1} + \gamma R_{t+2} + \cdots + \gamma^{n-1} R_{t+n} + \gamma^n \hat{v}(S_{t+n}, \mathbf{w}_{t+n-1}), \quad 0 \leq t \leq T-n \tag{9.16}
+$$
 
 
 

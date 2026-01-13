@@ -837,3 +837,41 @@ Store each transition result in the table as usual and weigh each result by how 
 
 8.6
 Strengthens the argument as we can expend more computational resources on the updates that matter most as opposed to computing the relative contribution of all next states and rewards including those with low importance.
+
+9.1
+In linear function approximation we have:
+$$
+\hat{v}(s, \textbf w) \doteq \textbf w^\top \textbf x(s)= \sum_{i=1}^d w_i x_i(s)
+$$
+We can then one-hot encode the states:
+$$
+x_i(s_j) = \begin{cases} 1 & \text{if } i = j \\ 0 & \text{if } i \neq j \end{cases}
+$$
+Then:
+$$
+\hat v (s_j, \textbf w) = \sum_{i=1}^{|\mathcal S|} w_i x_i(s_j)=w_j
+$$
+Which effectively turns $\hat v$ into a lookup table.
+Then:
+$$
+\textbf w_{t+1} \doteq \textbf w_t + \alpha \left[ G_t - \hat v(S_t, \textbf w_t)\right]\nabla \hat v(S_t, \textbf w_t)
+$$
+Where $\nabla \hat v (S_t, \textbf w_t)$ is simply the feature vector $\textbf x(S_t)$. Therefore updates only affect the corresponding weight $w_j$, mirroring tabular TD.
+9.2
+There are n+1 possible values for c, times by k counts of selection
+9.3
+
+|**Feature Index (i)**|**Feature Term**|**Exponent for s1​ (ci,1​)**|**Exponent for s2​ (ci,2​)**|
+|---|---|---|---|
+|1|$1$|0|0|
+|2|$s_1$|1|0|
+|3|$s_2$|0|1|
+|4|$s_1 s_2$|1|1|
+|5|$s_1^2$|2|0|
+|6|$s_2^2$|0|2|
+|7|$s_1 s_2^2$|1|2|
+|8|$s_1^2 s_2$|2|1|
+|9|$s_1^2 s_2^2$|2|2|
+
+
+
