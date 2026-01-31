@@ -6,6 +6,8 @@ So far I've made a start at [Dive into Deep Learning](https://d2l.ai) and [Reinf
 
 Of the RL book, I was able to get up to Part 2 using the approximation methods implemented Vanilla Deep Q Learning for the cartpole problem in JAX!
 
-There's lots more to learn and do under this topic but I'm putting most things on pause as I have to prioritise medical studies. 
+There's lots more to learn and do under this topic but I'm putting most things on pause as I have to prioritise medical studies.
+
+My cartpole implementation: (notebook [here](./rl-notes/code_exercises/cartpole.ipynb))
 
 ![CartPole Agent](./rl-notes/code_exercises/my_cartpole.gif)
