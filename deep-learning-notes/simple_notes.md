@@ -1,16 +1,26 @@
 - [Flavours of gradient descent:](#flavours-of-gradient-descent)
 - [Key terminology:](#key-terminology)
   - [Update equation](#update-equation)
-- [Models](#models)
-  - [Linear regression:](#linear-regression)
+- [Simple Models](#simple-models)
+  - [Linear regression](#linear-regression)
   - [Ridge Regression / Tikhonov Regression](#ridge-regression--tikhonov-regression)
   - [Lasso Regression](#lasso-regression)
   - [Logistic Regression](#logistic-regression)
-  - [Softmax](#softmax)
+  - [Classification](#classification)
+- [Complex Models](#complex-models)
+  - [Convolutional](#convolutional)
+    - [`nnx.Conv`](#nnxconv)
+    - [`nnx.max_pool` / `nnx.avg_pool` / `nnx.min_pool`](#nnxmax_pool--nnxavg_pool--nnxmin_pool)
 - [Activation Functions](#activation-functions)
+- [Vanishing Gradients](#vanishing-gradients)
+  - [Normalisation](#normalisation)
+    - [Batch Norm](#batch-norm)
+    - [Layer Norm](#layer-norm)
+    - [Instance Normalisation](#instance-normalisation)
+    - [Group Normalisation](#group-normalisation)
 - [Types of error](#types-of-error)
 - [Regularisation Methods](#regularisation-methods)
-  - [Constraine Optimisation (Squared Norm Regularisatiion as Hard Constraint)](#constraine-optimisation-squared-norm-regularisatiion-as-hard-constraint)
+  - [Constrained Optimisation (Squared Norm Regularisatiion as Hard Constraint)](#constrained-optimisation-squared-norm-regularisatiion-as-hard-constraint)
   - [L2 Regularisation / Weight decay / Ridge regression / Tikhonov regularisation](#l2-regularisation--weight-decay--ridge-regression--tikhonov-regularisation)
   - [Dropout](#dropout)
 - [VC dimension](#vc-dimension)
@@ -33,9 +43,9 @@ $$w_{t} \leftarrow w_{t-1} - \eta \cdot \frac{\partial \mathcal{L}}{\partial w_{
 
 ---
 
-## Models
+## Simple Models
 
-### Linear regression:
+### Linear regression
 
 Loss functions:
 - L1 loss (Manhattan loss)
@@ -94,7 +104,7 @@ $$l(y, \hat{y}) = - \left[ y \log(\hat{y}) + (1 - y) \log(1 - \hat{y}) \right]$$
 
 ---
 
-### Softmax
+### Classification
 Loss functions:
 - Pytorch (logits) `torch.nn.CrossEntropyLoss`
 - Pytorch (probabilities) `torch.nn.NLLLoss`
@@ -123,6 +133,92 @@ Also note that if our labels are one-hot we don't need to sum over all the outpu
 Overall:
 $$l = - \left( o_c - \bar{o} - \log \sum_k \exp(o_k - \bar{o}) \right)$$
 
+## Complex Models
+
+### Convolutional
+
+MLP suffers 2 problems:
+
+1. Translation invariance: In an MLP weights are tied to specific pixel indices, so if a feature in the input moved, it would no longer be detected.
+
+2. Locality: In an MLP, a neuron is influenced by every single pixel in the image equally, however meaningful visual features are usually defined by small neighbourhoods of pixels close together.
+
+
+---
+Transposed convolution
+- Other names: unconv or fractionally strided convolution
+- Sometimes (incorrectly) called "deconvolution"
+
+Transposed conv = input dilation by $(s - 1)$ and border padding of $(k - 1 - p_{\text{per side}})$, then standard conv with stride 1.
+
+Output shape:
+$$(s(n_h-1) + k - p_{\text{h total}}) \times (s(n_w-1) + k - p_{\text{w total}})$$
+
+![alt text](img/conv1.png)
+![alt text](img/conv2.png)
+![alt text](img/conv3.png)
+
+
+---
+
+Mathematical operations:
+
+1. Convolution ($f\ast g$)
+
+    $$(f * g)(t) = \int f(\tau) \, g(t - \tau) \, d\tau$$
+
+2. Cross-correlation ($f\star g$)
+
+    $$(f \star g)(t) = \int f(\tau) \, g(t + \tau) \, d\tau$$
+
+3. Autocorrelation ($f\star f$)
+
+    $$(f \star f)(t) = \int f(\tau) \, f(t + \tau) \, d\tau$$
+
+A CNN will use the cross-correlation operation.
+
+Lets define:
+- Image with dimensions $n_h \times n_w$
+- Kernel size $k_h \times k_w$
+- Padding $p_h \times p_w$ (adds a border of zero pixels to the image)
+- Stride $s_h \times s_w$
+
+NOTE: Both `nnx` and `pytorch` define `p` as per side, while the below formulas use $p_{\text{total for both sides}}$.
+
+Then, excluding stride our shape will be:
+$$([n_h + p_h] - k_h + 1) \times ([n_w + p_w] - k_w + 1)$$
+
+Intuitively, for the shape to be the same we define $p = k - 1$
+
+Adding stride:
+$$\left\lfloor \frac{[n_h + p_h] - k_h + s_h}{s_h}\right\rfloor \times \left\lfloor \frac{[n_w + p_w] - k_w + s_w}{s_w}\right\rfloor$$
+
+#### `nnx.Conv`
+- in_features (int)
+- out_features (int)
+- kernel_size (tuple)
+- padding:
+
+| Option | Behaviour | Per-side? |
+|---|---|---|
+| `'SAME'` | Pads to preserve spatial dims at stride 1 | Handled automatically |
+| `'VALID'` | No padding | N/A |
+| `'CIRCULAR'` | Periodic boundary (wraps around) | Handled automatically |
+| `'REFLECT'` | Reflects values across border | Handled automatically |
+| `'CAUSAL'` | Left-pads only (1D only) | Handled automatically |
+| `((low, high), ...)` | Explicit per-side padding per spatial dim | Yes, per-side |
+
+
+
+Note:
+- in_features: makes the kernel deeper (extends through input channels)
+- out_features: makes more copies of the kernel (each learning different features)
+
+#### `nnx.max_pool` / `nnx.avg_pool` / `nnx.min_pool`
+- We can define kernel size and padding behaviour (only SAME, VALID or custom)
+- No in_features or out_features. So in essence in_features = out_features.
+
+
 ## Activation Functions
 
 ![alt text](img/act_funcs.png)
@@ -132,6 +228,94 @@ $$l = - \left( o_c - \bar{o} - \log \sum_k \exp(o_k - \bar{o}) \right)$$
 | Sigmoid | $\frac{1}{1+e^{-x}}$              |
 | Tanh    | $\frac{1 - e^{-2x}}{1 + e^{-2x}}$ |
 | ReLU    | $\max(0, x)$                      |
+
+![alt text](img/activation_function_comparison_table.png)
+
+**On vanishing gradients:** Sigmoid's max gradient is ~0.25; tanh's is 1.0. In a deep network, repeated multiplication of these small values causes gradients to shrink exponentially toward the input layers, making early layers learn very slowly. ReLU's gradient of exactly 1 for z > 0 breaks this chain.
+
+**On dying ReLU:** If a neuron receives consistently negative inputs (e.g. from a large learning rate update), its pre-activation is always < 0, gradient is always 0, weights never update. That neuron is "dead" for the rest of training. Leaky ReLU patches this with a slope of typically 0.01 for z ≤ 0.
+
+## Vanishing Gradients
+
+### Normalisation
+
+Mostly taken from [this](https://dzdata.medium.com/the-different-types-of-normalizations-in-deep-learning-03eece7fa789) blog post.
+
+![alt text](img/norm.png)
+
+#### Batch Norm
+
+![alt text](img/batch_norm.png)
+
+Normalise across the whole batch per channel
+
+```python
+def BatchNorm(x, gamma, beta, eps=1e-5):
+    # x shape [N, C, H, W]
+
+    mean = torch.mean(x, dim=[0,2,3], keepdim=True)  # [1, C, 1, 1]
+    var = torch.var(x, dim=[0,2,3], keepdim=True)    # [1, C, 1, 1]
+
+    x_hat = (x - mean) / torch.sqrt(var + eps)
+    
+    return gamma * x_hat + beta
+```
+
+#### Layer Norm
+
+![alt text](img/layer_norm.png)
+
+Normalise features of each individual sample in a layer
+
+```python
+def LayerNorm(x, gamma, beta, eps=1e-5):
+    # x shape [N, C, H, W]
+    
+    mean = torch.mean(input=x, dim=[1,2,3], keepdim=True) # [N, 1, 1, 1]
+    var = torch.var(input=x, dim=[1,2,3], keepdim=True)   # [N, 1, 1, 1]
+    
+    x_hat = (x - mean) / torch.sqrt(var + eps)
+    
+    return gamma * x_hat + beta
+```
+
+#### Instance Normalisation
+
+![alt text](img/instance_norm.png)
+
+Normalise features of each individual sample in a layer per channel
+
+```python
+def InstanceNorm(x, gamma, beta, eps=1e-5):
+    # x shape [N, C, H, W]
+
+    mean = torch.mean(input=x, dim=[2,3], keepdim=True)  # [N, C, 1, 1]
+    var = torch.var(input=x, dim=[2,3], keepdim=True)    # [N, C, 1, 1]
+
+    x_hat = (x - mean) / torch.sqrt(var + eps)
+    
+    return gamma * x_hat + beta
+```
+
+#### Group Normalisation
+
+![alt text](img/group_norm.png)
+
+```python
+def GroupNorm(x, gamma, beta, group_num, eps=1e-5):
+    # x shape [N, C, H, W]
+
+    x = torch.reshape(x, shape=[N, G, C // G, H, W])
+    mean = torch.mean(x, dim=[2,3,4], keepdim=True)  # [N, G, 1, 1, 1]
+    var = torch.var(x, dim=[2,3,4], keepdim=True)    # [N, G, 1, 1, 1]
+
+    x_hat = (x - mean) / torch.sqrt(var + eps)
+
+    x_hat = torch.reshape(x, shape=[N, C, H, W])
+    
+    return gamma * x_hat + beta
+```
+
 
 ## Types of error
 
@@ -161,7 +345,7 @@ report average error across K folds
 
 ## Regularisation Methods
 
-### Constraine Optimisation (Squared Norm Regularisatiion as Hard Constraint)
+### Constrained Optimisation (Squared Norm Regularisatiion as Hard Constraint)
 
 - $\min \mathcal{l(\mathbf w, b)}$ subject to $||\mathbf w ||^2 \le \theta$
 - Often do not include bias as usually has no impact in practice
@@ -199,7 +383,7 @@ Applies to binary classifiers.
 
 Example:
 - 2d perceptron has 3 parameters (w1, w2, b); can classify 3 points perfectly (not 4) $\rightarrow \text{VC}=3$
-- Perceptron with N parameters $\rightarrow \text{VC}=4$
+- Perceptron with N parameters $\rightarrow \text{VC}=N$
 - Some multilayer perceptrons $\rightarrow \text{VC}=N \log_2 (N)$
 
 ## Perceptrons
