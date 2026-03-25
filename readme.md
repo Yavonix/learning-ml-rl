@@ -1,11 +1,7 @@
 ## ML/RL Notes
 
-Usually over the holidays I like to go through ML/RL books for fun as a distraction from med.
+Just some of my notes.
 
-So far I've made a start at [Dive into Deep Learning](https://d2l.ai) and [Reinforcement Learning: An Introduction](https://www.andrew.cmu.edu/course/10-703/textbook/BartoSutton.pdf).
-
-Of the RL book, I was able to get up to Part 2 using the approximation methods implemented Vanilla Deep Q Learning for the cartpole problem in JAX.
-
-My cartpole implementation: (notebook [here](./rl-notes/code_exercises/cartpole.ipynb))
+Cartpole implementation: (notebook [here](./rl-notes/code_exercises/cartpole.ipynb))
 
 ![CartPole Agent](./rl-notes/code_exercises/my_cartpole.gif)
