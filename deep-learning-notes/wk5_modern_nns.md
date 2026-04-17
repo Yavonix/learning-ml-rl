@@ -21,6 +21,18 @@ They were proposed on a simple insight:
 - (i) use convolutions to add local nonlinearities across the channel activations
 - (ii) use global average pooling to integrate across all locations in the last representation layer
 
+## GoogLeNet
+
+Clear demarcation between:
+- Stem (data ingestion)
+- Body (data processing)
+- Head (predictions)
+
+Key problem in prior networks was selecting the convolution size for the body. E.g., is $1\times 1$ best or $11\times 11$ best?
+- GoogLeNet says use all of them, part of an `inception` block.
+- Concatenate all the outputs.
+
+
 # Architectures
 
 ## LeNet
@@ -32,22 +44,32 @@ One of the first published CNNs; 1995.
 ```python
 class LeNet(nnx.Module):
     def __init__(self, rngs: nnx.Rngs, image_size=28, num_classes=10):
-        flattened_size = int((((image_size / 2) - 4) / 2) ** 2 * 16)
-        self.conv1 = nnx.Conv(1, 6, (5, 5), padding="SAME", rngs=rngs)
-        self.conv2 = nnx.Conv(6, 16, (5, 5), padding="VALID", rngs=rngs)
-        self.fc1 = nnx.Linear(flattened_size, 120, rngs=rngs)
-        self.fc2 = nnx.Linear(120, 84, rngs=rngs)
-        self.fc3 = nnx.Linear(84, num_classes, rngs=rngs)
+        self.features = nnx.Sequential(
+            nnx.Conv(1, 6, (5, 5), padding="SAME", rngs=rngs),
+            nnx.sigmoid,
+            AvgPool((2,2), (2,2)),
+            nnx.Conv(6, 16, (5, 5), padding="VALID", rngs=rngs),
+            nnx.sigmoid,
+            AvgPool((2,2), (2,2))
+        )
+
+        dummy_data = ShapeDtypeStruct((1, image_size, image_size, 1), jnp.float32)
+        dummy_shape = eval_shape(self.features, dummy_data).shape
+        flattened_size = prod(dummy_shape[1:])
+
+        self.classifier = nnx.Sequential(
+            nnx.Linear(flattened_size, 120, rngs=rngs),
+            nnx.sigmoid,
+            nnx.Linear(120, 84, rngs=rngs),
+            nnx.sigmoid,
+            nnx.Linear(84, num_classes, rngs=rngs)
+        )
 
     def __call__(self, x):
-        x = nnx.sigmoid(self.conv1(x)) # n n 6
-        x = nnx.avg_pool(x, (2, 2), strides=(2, 2), padding="VALID") # n/2 n/2 6
-        x = nnx.sigmoid(self.conv2(x)) # n/2-4 n/2-4 16
-        x = nnx.avg_pool(x, (2, 2), strides=(2, 2), padding="VALID") # (n/2-4)/2 (n/2-4)/2 16
-        x = x.reshape(x.shape[0], -1) # (n/2-4)/2 * (n/2-4)/2 * 16
-        x = nnx.sigmoid(self.fc1(x))
-        x = nnx.sigmoid(self.fc2(x))
-        return self.fc3(x)
+        x = self.features(x)
+        x = x.reshape(x.shape[0], -1)
+        x = self.classifier(x)
+        return x
 ```
 
 ## AlexNet
@@ -180,3 +202,30 @@ class NiN(nnx.Module):
         x = x.mean(axis=(1,2)) # NHWC; C=10
         return x
 ```
+
+## GoogLeNet
+
+From d2l.ai:
+
+> As depicted in Fig. 8.4.1, the inception block consists of four parallel branches. The first three branches use convolutional layers with window sizes of , , and to extract information from different spatial sizes. The middle two branches also add a convolution of the input to reduce the number of channels, reducing the model’s complexity. The fourth branch uses a max-pooling layer, followed by a convolutional layer to change the number of channels. The four branches all use appropriate padding to give the input and output the same height and width. Finally, the outputs along each branch are concatenated along the channel dimension and comprise the block’s output. The commonly-tuned hyperparameters of the Inception block are the number of output channels per layer, i.e., how to allocate capacity among convolutions of different size.
+
+![alt text](img/googlenet.png)
+
+## Batch Normalisation
+
+Also described under normalisation in [prior notes](./wk1-4_basics.md)
+
+For a given `NHWC`
+
+| Type | Reduces | Independent |
+|---|---|---|
+| Batch | `NHW` | `C` |
+| Layer | `HWC` | `N` |
+| Instance | `HW` | `NC` |
+| Group | `HW(C/G)` | `NG` |
+
+How to remember:
+- Batch norm operates before - NHW are reduced, C is independent
+- Layer norm operates later - HWC are reduced, N is independent
+- Instance norm operates inside - HW are reduced, N and C are independent
+- Group norm groups instances by C - HWC are reduced, N and C are independent
