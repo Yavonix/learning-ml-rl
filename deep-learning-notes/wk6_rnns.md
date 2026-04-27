@@ -1,6 +1,8 @@
 Need to read ~~9.1~~, ~~9.2~~ and ~~9.3~~ again
 
-Need to go through 10.5 to 10.8
+Need to go through ~~10.5~~, ~~10.6~~, 10.7, 10.8
+
+Up to 10.7.3.
 
 # Recurrent Neural Networks
 
@@ -436,3 +438,121 @@ Key idea:
 - concatenating them gives each timestep access to information from **both sides**
 
 ![alt text](img/bidirection_rnn.png)
+
+
+## Sequence to Sequence Modelling
+
+### Encoder Decoder Architecture
+
+Basically encoder computes some context variable $c$.
+
+The decoder is then seeded with the context variable $c$ and recurrently generates the target sequence.
+
+At each decoder step, the input token is either:
+- **Inference:** the decoder’s own previous prediction
+- **Training with teacher forcing:** the true previous target token
+
+Note an encoder may produce hidden states $h_1, \dots, h_T$ which are compressed into a **context variable** $c$ via a function $q$:
+
+$$
+c = q(h_1, \dots, h_T)
+$$
+
+For a simple seq2seq RNN: $c = h_T$
+
+For attention seq2seq RNN: $c = [h_1, \dots, h_T]$
+
+
+
+![alt text](img/encoder_decoder.png)
+
+### Teacher Forcing
+
+Regardless of prior decoder output, just use the target sequence as part of input sequence:
+
+- Input: `<bos> je suis étudiant` (shift label by inserting `<bos>`)
+- Label: `je suis étudiant <eos>`
+
+The decoder uses its previous hidden state, but the next input token is the true target token, not the token it predicted.
+
+### Sequence to Sequence RNN Encoder-Decoder Model
+
+Two general architectures for state handling:
+
+1. Encoder state only seeds decoder
+
+```
+c = encoder final hidden state
+h0 = c
+
+output1, h1 = DecoderCell(y0, h0)
+output2, h2 = DecoderCell(y1, h1)
+output3, h3 = DecoderCell(y2, h2)
+```
+
+2. Encoder state is fed at every decoder step
+
+```
+c = encoder final hidden state
+h0 = initial decoder hidden state
+
+output1, h1 = DecoderCell([y0, c], h0)
+output2, h2 = DecoderCell([y1, c], h1)
+output3, h3 = DecoderCell([y2, c], h2)
+```
+
+### Multi-layer Sequence to Sequence RNN Encoder-Decoder Model
+
+For a multi-layer encoder, the context variable may include the final hidden state from each encoder layer:
+
+$$
+c = [h_T^{(1)}, h_T^{(2)}, \dots, h_T^{(L)}]
+$$
+
+where \(L\) is the number of RNN layers. `c.shape = (num_layers, batch_size, hidden_size)`
+
+Two general architectures for state handling:
+
+1. Multi-layer encoder state only seeds multi-layer decoder
+
+```text
+c = encoder final hidden states from all layers
+h0 = c
+
+output1, h1 = DecoderRNN(y0, h0)
+output2, h2 = DecoderRNN(y1, h1)
+output3, h3 = DecoderRNN(y2, h2)
+```
+
+Here:
+
+```text
+h0 = [h0_layer1, h0_layer2, ..., h0_layerL]
+```
+
+Each decoder layer is initialised using the corresponding encoder layer’s final hidden state.
+
+2. Multi-layer encoder state is fed at every decoder step
+
+```text
+c = encoder final hidden states from all layers
+h0 = initial decoder hidden states
+
+output1, h1 = DecoderRNN([y0, c], h0)
+output2, h2 = DecoderRNN([y1, c], h1)
+output3, h3 = DecoderRNN([y2, c], h2)
+```
+
+Here, \(c\) is repeatedly supplied as extra context, while \(h_t\) is the decoder’s evolving multi-layer hidden state.
+
+For an LSTM, the decoder state usually includes both hidden and cell states:
+
+```text
+state = (h, cell)
+```
+
+so the encoder context may be:
+
+```text
+c = (h_n, cell_n)
+```
