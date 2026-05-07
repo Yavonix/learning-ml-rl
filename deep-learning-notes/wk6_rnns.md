@@ -1,6 +1,6 @@
 Need to read ~~9.1~~, ~~9.2~~ and ~~9.3~~ again
 
-Need to go through ~~10.5~~, ~~10.6~~, 10.7, 10.8
+Need to go through ~~10.5~~, ~~10.6~~, ~~10.7~~, 10.8
 
 Up to 10.7.3.
 
@@ -511,6 +511,48 @@ $$
 
 where \(L\) is the number of RNN layers. `c.shape = (num_layers, batch_size, hidden_size)`
 
+Usually decoder layer (l) gets encoder layer (l)’s final state.
+
+So if the encoder context stack is:
+
+$$
+C = [h_T^{(1)}, h_T^{(2)}, \dots, h_T^{(L)}]
+$$
+
+then the decoder is initialised like:
+
+$$
+h_{dec,0}^{(1)} = h_{enc,T}^{(1)}
+$$
+
+$$
+h_{dec,0}^{(2)} = h_{enc,T}^{(2)}
+$$
+
+$$
+\vdots
+$$
+
+$$
+h_{dec,0}^{(L)} = h_{enc,T}^{(L)}
+$$
+
+For an LSTM, same idea but with both hidden and cell states:
+
+$$
+(h_{dec,0}^{(l)}, c_{dec,0}^{(l)}) = (h_{enc,T}^{(l)}, c_{enc,T}^{(l)})
+$$
+
+Important nuance: this assumes encoder and decoder have the **same number of layers and compatible hidden sizes**. If not, people often use a learned projection/bridge $H_{dec,0} = W H_{enc,T}$
+
+So:
+
+```text
+Encoder layer 1 final state → Decoder layer 1 initial state
+Encoder layer 2 final state → Decoder layer 2 initial state
+Encoder layer 3 final state → Decoder layer 3 initial state
+```
+
 Two general architectures for state handling:
 
 1. Multi-layer encoder state only seeds multi-layer decoder
@@ -556,3 +598,102 @@ so the encoder context may be:
 ```text
 c = (h_n, cell_n)
 ```
+
+ANKI NOTES UP TO HERE
+---
+---
+---
+
+## Evaluation of Predicted Sequence
+
+Analogous to "accuracy" for CNNs, Bilingual Evaluation Understudy (BLEU) is a metric for measuring output sequences quality.
+
+In principle, for any $n$-gram in a predicted sequence, BLEU evaluates whether it appears in the target sequence.
+
+$p_n$ (precision of an $n$-gram) is the ratio of the count of $n$-grams in the prediction appearing in the target to the $n$-grams in the predicted sequence.
+
+$$
+p_n = \frac{\text{clipped count of matched n-grams in the prediction}}{\text{n-grams in the prediction}}
+$$
+
+For example:
+- Target: `A B C D E F`
+- Prediction: `A B B C D`
+- $p_1 = 4/5$, $p_2 = 3/4$, $p_3 = 1/3$, $p_4 = 0$.
+
+Clipped means a predicted n-gram can only be counted up to the number of times it appears in the target
+
+For example:
+- Target: `the cat sat on the mat`
+- Prediction: `the the the the`
+- For the unigram `the`, the clipped count is 2.
+
+Then the BLEU is defined as:
+
+$$
+\text{BLEU} = \exp\left(\min\left(0, 1 - \frac{\textrm{len}_{\textrm{label}}}{\textrm{len}_{\textrm{pred}}}\right)\right) \prod_{n=1}^k p_n^{1/2^n},
+$$
+
+Note since $p \in [0,1]$ then $p^{1/n} \le p^{1/2n}$
+
+## Search Strategies
+
+Denote at any timestep 
+- $\mathcal{Y}$ as output vocabulary (including `<eos>`)
+- $T'$ as max number of output tokens
+
+Then the goal is to select an ideal sequence from $\mathcal{O}(\left|\mathcal{Y}\right|^{T'})$ possible sequences.
+
+### Greedy Search
+
+$$
+y_{t'} = \argmax_{y\in \mathcal{Y}} P(y \mid y, y_1, \dots, y_{t'-1}, c)
+$$
+
+### Exhaustive Search
+
+Lol
+
+### Sequence Decoding Beam Search
+
+Just to contrast against A*:
+
+- A*-style search has a global frontier across depths, that is, the frontier can contain nodes at different depths, because the score is intended to make them comparable ($f(n) = g(n) + h(n)$)
+- We don't have a $h(n)$ for next token predictions (unless we train something like a value network)
+- And raw sequence probability degrades with length $P(y_1, y_2, y_3) \le P(y_1, y_2) \lt P(y_1)$
+
+For sequence decoding beam search, we do a level-synchronous version:
+```
+t = 1: keep best k sequences of length 1
+t = 2: expand those, keep best k sequences of length 2
+t = 3: expand those, keep best k sequences of length 3
+```
+This way all candidates have the same length.
+
+Pseudocode:
+
+```python
+frontier = [("", score=0)]
+
+for each timestep:
+    candidates = []
+
+    for sequence in frontier:
+        expand sequence by every possible next token
+        score each new sequence by cumulative log probability
+        add to candidates
+
+    frontier = top k candidates
+```
+
+Since we stop generating when we get a `<eos>` token, we need a way to compare sequences of different length. Usually this means **length-normalised log probability**.
+
+$$
+score(y) = \frac{1}{T} \sum^T_{t=1} \log P(y_t \mid y_{<t},c)
+$$
+
+Which is equivalent to perplexity, just wthout the $\exp(-x)$ transformation...
+
+$$
+\text{Perplexity} = \exp\left(- \frac{1}{T} \sum^T_{t=1} \log P(y_t \mid y_{<t},c) \right)
+$$

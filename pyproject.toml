@@ -34,6 +34,9 @@ dependencies = [
     "medmnist>=3.0.2",
     "torchinfo>=1.8.0",
     "tiktoken>=0.12.0",
+    "gensim>=4.4.0",
+    "torchtext>=0.18.0",
+    "datasets>=4.8.5",
 ]
 
 [tool.uv.sources]
