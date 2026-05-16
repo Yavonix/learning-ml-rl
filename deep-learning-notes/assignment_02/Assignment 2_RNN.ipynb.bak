@@ -1,0 +1,4971 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "8175712e",
+   "metadata": {},
+   "source": [
+    "## 3008ICT Deep Learning\n",
+    "\n",
+    "## Trimester 1, 2026\n",
+    "\n",
+    "# Assignment 2: Recurrent Neural Networks and NLP\n",
+    "\n",
+    "### •\tDue: Monday 18th May 2026, 11:59 PM.\n",
+    "        \n",
+    "### •\tTotal Marks: 30%:\n",
+    "\n",
+    "        "
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "a0a1d17b",
+   "metadata": {},
+   "source": [
+    "### Instructions:\n",
+    "\n",
+    "•\tLate submission: Late submission is allowed but a penalty applies. The penalty is defined as the reduction of the mark allocated to the assessment item by 5% of the total weighted mark for the assessment item, for each working day that the item is late. A working day is defined as Monday to Friday. Assessment items submitted more than five working days after the due date will be awarded zero marks. \n",
+    "\n",
+    "•\tExtension: You can request an extension of time on one of two grounds: medical or special circumstances (e.g. special family or personal circumstances, unavoidable commitments). Please note that workloads such as other assignments are not eligible grounds for extensions.\n",
+    "All requests must be made through the myGriffith portal. \n",
+    "\n",
+    "•\tIndividual Work: You must complete this assignment individually and submit authentic work. This should be your own work. Anyone caught plagiarising will be penalised and reported to the university. Students are not allowed to use AI to generate solutions for the assignment (code or report). You must demonstrate your work in the submission.\n",
+    "\n",
+    "#### Objectives: \n",
+    "\n",
+    "✓\t Implement and compare three different types of recurrent neural networks (RNNs).\n",
+    "\n",
+    "✓\t Classify movie reviews as positive or negative (sentiment analysis) using the IMDb dataset.\n",
+    "\n",
+    "✓\t Evaluate the performance of the implementations on a real-world dataset.\n",
+    "\n",
+    "Your code should be written in PyTorch (Python). In rare cases, students may be allowed to use another programming language, but approval by the course convenor is required. \n",
+    "\n",
+    "This assignment can be done on a CPU, while students are encouraged to use GPU if available.\n",
+    "\n",
+    "No heavy math is required: you will work at the layer level, letting PyTorch handle the internals.\n",
+    "\n",
+    "Prerequisites: Python 3.9+, PyTorch 2.x, torchtext or datasets (HuggingFace), numpy, matplotlib. \n",
+    "\n",
+    "Install with: pip install torch torchtext datasets\n",
+    "\n",
+    "You can train on a subset of the dataset first, say 5 000-samples, to verify your code runs, then use the full dataset for final results. \n",
+    "\n",
+    "\n",
+    "#### Submission:  \n",
+    "\n",
+    "1. A single Jupyter notebook rnn_sentiment.ipynb with all cells executed.\n",
+    "\n",
+    "2. Short PDF report (expected No More than 2 pages, but no page limit).\n",
+    "\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "15f193cb",
+   "metadata": {},
+   "source": [
+    "## Part 0. Setup & Data Preprocessing\n",
+    "\n",
+    "All three models share the same data pipeline. Complete this section once; it will be reused in every subsequent part.\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "320dd72e",
+   "metadata": {},
+   "source": [
+    "### 0.1. Load the IMDb Dataset\n",
+    "\n",
+    "Use the HuggingFace datasets library to load IMDb. The dataset has 25 000 training reviews and 25 000 test reviews, each labeled 0 (negative) or 1 (positive).\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "669239b0",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "I rented I AM CURIOUS-YELLOW from my video store because of all the controversy that surrounded it when it was first released in 1967. I also heard that at first it was seized by U.S. customs if it ev\n",
+      "Label: 0\n"
+     ]
+    }
+   ],
+   "source": [
+    "from datasets import load_dataset\n",
+    "\n",
+    "dataset = load_dataset(\"imdb\")\n",
+    "train_data = dataset[\"train\"]\n",
+    "test_data  = dataset[\"test\"]\n",
+    "\n",
+    "# Quick look\n",
+    "print(train_data[0][\"text\"][:200])\n",
+    "print(\"Label:\", train_data[0][\"label\"])"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "8b9d0dd3",
+   "metadata": {},
+   "source": [
+    "### 0.2. Tokenisation & Vocabulary\n",
+    "\n",
+    "Convert raw text into integer token sequences. We keep the vocabulary to the 20 000 most common words and cap each review at 500 tokens."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "id": "897e5d80",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import re\n",
+    "from collections import Counter\n",
+    "import torch\n",
+    "from torch.utils.data import Dataset, DataLoader\n",
+    "from torch.nn.utils.rnn import pad_sequence\n",
+    "\n",
+    "# ── helpers ──────────────────────────────────────────────\n",
+    "def tokenize(text):\n",
+    "    text = text.lower()\n",
+    "    return re.findall(r\"\\b[a-z']+\\b\", text)\n",
+    "\n",
+    "# Build vocab from training set\n",
+    "VOCAB_SIZE = 20_000\n",
+    "MAX_LEN    = 500\n",
+    "PAD_IDX    = 0\n",
+    "UNK_IDX    = 1\n",
+    "\n",
+    "counter = Counter()\n",
+    "for ex in train_data:\n",
+    "    counter.update(tokenize(ex[\"text\"]))\n",
+    "\n",
+    "vocab = {\"<pad>\": PAD_IDX, \"<unk>\": UNK_IDX}\n",
+    "vocab.update({w: i+2 for i, (w, _) in\n",
+    "              enumerate(counter.most_common(VOCAB_SIZE))})\n",
+    "\n",
+    "def encode(text):\n",
+    "    tokens = tokenize(text)[:MAX_LEN]\n",
+    "    return [vocab.get(t, UNK_IDX) for t in tokens]\n",
+    "\n",
+    "# ── Dataset class ─────────────────────────────────────────\n",
+    "class IMDbDataset(Dataset):\n",
+    "    def __init__(self, split):\n",
+    "        self.samples = [\n",
+    "            (\n",
+    "                torch.tensor(encode(ex[\"text\"]), dtype=torch.long),\n",
+    "                torch.tensor(ex[\"label\"],        dtype=torch.long)\n",
+    "            )\n",
+    "            for ex in dataset[split]\n",
+    "        ]\n",
+    "\n",
+    "    def __len__(self): return len(self.samples)\n",
+    "    def __getitem__(self, i): return self.samples[i]\n",
+    "\n",
+    "\n",
+    "def collate(batch):\n",
+    "    texts, labels = zip(*batch)\n",
+    "    # Capture true lengths BEFORE padding\n",
+    "    lengths = torch.tensor([len(t) for t in texts], dtype=torch.long)\n",
+    "    texts = pad_sequence(texts, batch_first=True, padding_value=PAD_IDX)\n",
+    "    return texts, torch.stack(labels), lengths  # Return lengths\n",
+    "\n",
+    "\n",
+    "train_loader = DataLoader(IMDbDataset(\"train\"), batch_size=64,\n",
+    "                          shuffle=True,  collate_fn=collate)\n",
+    "test_loader  = DataLoader(IMDbDataset(\"test\"),  batch_size=64,\n",
+    "                          shuffle=False, collate_fn=collate)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "5a9e9cdc",
+   "metadata": {},
+   "source": [
+    "***Hint***: PyTorch's pad_sequence automatically pads shorter reviews with zeros so all sequences in a batch have the same length. This is necessary for batched processing."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "id": "3e5d1466",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Helper cell for class definitions that collate model results for final comparison table\n",
+    "\n",
+    "# Instead of just manually copying and pasting the results into the table in less than 5 minutes I instead spent an hour overengineering this...\n",
+    "\n",
+    "from IPython.display import Markdown, display\n",
+    "import plotly.express as px\n",
+    "import plotly.io as pio\n",
+    "pio.templates.default = \"simple_white\"\n",
+    "from dataclasses import dataclass, field\n",
+    "import time\n",
+    "\n",
+    "@dataclass\n",
+    "class TrainHistory:\n",
+    "    train_loss: list[float] = field(default_factory=list)\n",
+    "    train_acc: list[float] = field(default_factory=list)\n",
+    "    test_loss: list[float] = field(default_factory=list)\n",
+    "    test_acc: list[float] = field(default_factory=list)\n",
+    "\n",
+    "    def get_dict(self):\n",
+    "        return {\n",
+    "            \"train_loss\": self.train_loss,\n",
+    "            \"train_acc\": self.train_acc,\n",
+    "            \"test_loss\": self.test_loss,\n",
+    "            \"test_acc\": self.test_acc\n",
+    "        }\n",
+    "\n",
+    "@dataclass\n",
+    "class ModelTrainStats:\n",
+    "    name: str\n",
+    "    model: torch.nn.Module\n",
+    "    avg_epoch_time: float = 0.0\n",
+    "    train_stats: TrainHistory = field(default_factory=TrainHistory)\n",
+    "\n",
+    "    def get_param_count(self):\n",
+    "        return sum(p.numel() for p in self.model.parameters() if p.requires_grad)\n",
+    "    \n",
+    "    # torch.cuda.synchronise needed since pytorch runs gpu operations asynchronously\n",
+    "    def start_timer(self):\n",
+    "        if torch.cuda.is_available():\n",
+    "            torch.cuda.synchronize()\n",
+    "        self.start_time = time.perf_counter()\n",
+    "    \n",
+    "    def stop_timer(self, epochs_passed=5):\n",
+    "        if torch.cuda.is_available():\n",
+    "            torch.cuda.synchronize()\n",
+    "\n",
+    "        self.avg_epoch_time = (time.perf_counter() - self.start_time) / epochs_passed\n",
+    "\n",
+    "class ModelTrainCollection:\n",
+    "    def __init__(self):\n",
+    "        self.tracked: dict[str, ModelTrainStats] = {}\n",
+    "    \n",
+    "    def add(self, model_train: ModelTrainStats):\n",
+    "        self.tracked[model_train.name] = model_train\n",
+    "\n",
+    "    def __iter__(self):\n",
+    "        return iter(self.tracked.values())\n",
+    "\n",
+    "models = ModelTrainCollection()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "a579cb23",
+   "metadata": {},
+   "source": [
+    "## PART 1. Vanilla RNN Sentiment Classifier\n",
+    "\n",
+    "A vanilla RNN processes text one token at a time, left to right, maintaining a hidden state that acts as its \"memory\". Implement the model below and complete the training loop."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "a9f0706f",
+   "metadata": {},
+   "source": [
+    "The model architecture has three stages: Embed → Recur → Classify."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "cb09735d",
+   "metadata": {},
+   "source": [
+    "### TASK 1.1. DEFINE BASIC RNN MODEL and TRAINING LOOP\n",
+    "\n",
+    "Complete the function train_model(model, loader, optimizer, criterion, device) \n",
+    "that iterates over one epoch and returns the average loss and accuracy. \n",
+    "Then write a corresponding evaluate_model function for the test set (no gradient computation needed).\n",
+    "\n",
+    "***REQUIREMENTS***\n",
+    "\n",
+    "Use torch.optim.Adam  with lr=1e-3\n",
+    "\n",
+    "Use nn.CrossEntropyLoss\n",
+    "\n",
+    "Train for 5 epochs and print loss & accuracy each epoch\n",
+    "\n",
+    "Move model and data to device (use GPU if available)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "b6f03a81",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import torch\n",
+    "import torch.nn as nn\n",
+    "\n",
+    "torch.manual_seed(42)\n",
+    "\n",
+    "class RNNClassifier(nn.Module):\n",
+    "    def __init__(self, vocab_size, embed_dim, hidden_dim, n_classes, dropout=0.5):\n",
+    "        super().__init__()\n",
+    "        \"\"\" Your Code\"\"\"\n",
+    "        self.embedding = nn.Embedding(vocab_size, embed_dim)\n",
+    "        self.rnn = nn.RNN(embed_dim, hidden_dim, batch_first=True, dropout=dropout)\n",
+    "        self.fc = nn.Linear(in_features=hidden_dim, out_features=n_classes)\n",
+    "\n",
+    "    # def forward(self, x):\n",
+    "    def forward(self, x, lengths): # had to modify forward pass so that lengths can be used to extract the correct final hidden state\n",
+    "        \"\"\" Your Code\"\"\"\n",
+    "\n",
+    "        embeddings = self.embedding(x)\n",
+    "\n",
+    "        # o contains hidden state for every timestep from last layer (B, L, hidden_dim)\n",
+    "        # h contains hidden state for last timestep (num_layers, B, hidden_dim)\n",
+    "        o, h = self.rnn(embeddings)\n",
+    "        \n",
+    "        batch_size = x.size(0)\n",
+    "        actual_last_outputs = o[torch.arange(batch_size), lengths - 1]\n",
+    "        \n",
+    "        return self.fc(actual_last_outputs)\n",
+    "\n",
+    "# ── Shared training utilities ─────────────────────────────────\n",
+    "def train_model(model: nn.Module, loader, optimizer: torch.optim.Optimizer, criterion, device) -> tuple[float, float]:\n",
+    "    \"\"\"One training epoch. Returns (avg_loss, accuracy).\"\"\"  \n",
+    "    \"\"\" Your Code \"\"\"\n",
+    "    \n",
+    "    model.train()\n",
+    "    model.to(device)\n",
+    "\n",
+    "    avg_loss = 0\n",
+    "    avg_acc = 0\n",
+    "    n = 0\n",
+    "\n",
+    "    for texts, labels, lengths in loader:\n",
+    "        texts, labels, lengths = texts.to(device), labels.to(device), lengths.to(device)\n",
+    "        \n",
+    "        y_hat = model(texts, lengths)\n",
+    "\n",
+    "        loss = criterion(y_hat, labels)\n",
+    "        optimizer.zero_grad()\n",
+    "        loss.backward()\n",
+    "        optimizer.step()\n",
+    "\n",
+    "        _, pred = y_hat.max(axis=1) # returns max, indice of max\n",
+    "        acc = (pred == labels).sum().item() / labels.size(0)\n",
+    "\n",
+    "        # online mean\n",
+    "        n += 1\n",
+    "        avg_loss = avg_loss + (loss.item() - avg_loss)/n\n",
+    "        avg_acc = avg_acc + (acc - avg_acc)/n\n",
+    "\n",
+    "    return (avg_loss, avg_acc)\n",
+    "\n",
+    "def evaluate_model(model: nn.Module, loader, criterion, device):\n",
+    "    \"\"\"Evaluation pass (no gradients). Returns (avg_loss, accuracy).\"\"\"\n",
+    "    \n",
+    "    \"\"\" Your Code \"\"\"\n",
+    "    model.eval()\n",
+    "    avg_loss = 0\n",
+    "    avg_acc = 0\n",
+    "    n = 0\n",
+    "    \n",
+    "    with torch.no_grad():\n",
+    "        for texts, labels, lengths in loader:\n",
+    "            texts, labels, lengths = texts.to(device), labels.to(device), lengths.to(device)\n",
+    "            \n",
+    "            y_hat = model(texts, lengths)\n",
+    "\n",
+    "            loss = criterion(y_hat, labels)\n",
+    "\n",
+    "            _, pred = y_hat.max(axis=1)\n",
+    "            acc = (pred == labels).sum().item() / labels.size(0)\n",
+    "\n",
+    "            n += 1\n",
+    "            avg_loss = avg_loss + (loss.item() - avg_loss)/n\n",
+    "            avg_acc = avg_acc + (acc - avg_acc)/n\n",
+    "\n",
+    "    return (avg_loss, avg_acc)\n",
+    "\n",
+    "def run_training(m_info: ModelTrainStats, train_loader, test_loader, n_epochs=5, lr=1e-3):\n",
+    "    \"\"\"Full training run. Returns history dict.\"\"\"    \n",
+    "    \n",
+    "    \"\"\" Your Code \"\"\"\n",
+    "    device = torch.device(\"cuda\" if torch.cuda.is_available() else \"cpu\")\n",
+    "    optimiser = torch.optim.Adam(m_info.model.parameters(), lr=lr)\n",
+    "    criterion = nn.CrossEntropyLoss()\n",
+    "        \n",
+    "    history = m_info.train_stats\n",
+    "\n",
+    "    m_info.start_timer()\n",
+    "\n",
+    "    for epoch in range(n_epochs):\n",
+    "        print(f\"Epoch {epoch+1}/{n_epochs}\", end=\" \")\n",
+    "    \n",
+    "        train_loss, train_accuracy = train_model(m_info.model, train_loader, optimiser, criterion, device)\n",
+    "        evaluate_loss, evaluate_accuracy = evaluate_model(m_info.model, test_loader, criterion, device)\n",
+    "        \n",
+    "        print(f\"Train Loss: {train_loss:.4f} | Train Acc: {train_accuracy:.4f} | Test Loss: {evaluate_loss:.4f} | Test Acc: {evaluate_accuracy:.4f}\")\n",
+    "        \n",
+    "        history.train_loss.append(train_loss)\n",
+    "        history.train_acc.append(train_accuracy)\n",
+    "        history.test_loss.append(evaluate_loss)\n",
+    "        history.test_acc.append(evaluate_accuracy)\n",
+    "\n",
+    "    m_info.stop_timer(n_epochs)\n",
+    "\n",
+    "    return history"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "id": "437f1c5b",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/home/roman/repos/learning-ml/.venv/lib/python3.12/site-packages/torch/nn/modules/rnn.py:123: UserWarning: dropout option adds dropout after all but last recurrent layer, so non-zero dropout expects num_layers greater than 1, but got dropout=0.5 and num_layers=1\n",
+      "  warnings.warn(\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "RNNClassifier(\n",
+      "  (embedding): Embedding(20002, 128)\n",
+      "  (rnn): RNN(128, 256, batch_first=True, dropout=0.5)\n",
+      "  (fc): Linear(in_features=256, out_features=2, bias=True)\n",
+      ")\n",
+      "Epoch 1/5 Train Loss: 0.6917 | Train Acc: 0.5497 | Test Loss: 0.6811 | Test Acc: 0.5541\n",
+      "Epoch 2/5 Train Loss: 0.6543 | Train Acc: 0.6086 | Test Loss: 0.6390 | Test Acc: 0.6289\n",
+      "Epoch 3/5 Train Loss: 0.6361 | Train Acc: 0.6301 | Test Loss: 0.6674 | Test Acc: 0.5891\n",
+      "Epoch 4/5 Train Loss: 0.6199 | Train Acc: 0.6560 | Test Loss: 0.6407 | Test Acc: 0.6422\n",
+      "Epoch 5/5 Train Loss: 0.5981 | Train Acc: 0.6747 | Test Loss: 0.6470 | Test Acc: 0.6226\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "TrainHistory(train_loss=[0.6916738995505722, 0.6543245801840292, 0.6360795978847364, 0.6198655622999377, 0.5980717840097137], train_acc=[0.5497202685421997, 0.6086397058823537, 0.6300591432225066, 0.6559782608695649, 0.6747442455242969], test_loss=[0.6810741227910957, 0.6389964869260177, 0.6674202046430925, 0.6407013078937136, 0.6470210465323898], test_acc=[0.55406010230179, 0.628908248081841, 0.5891144501278769, 0.6421994884910488, 0.6226182864450128])"
+      ]
+     },
+     "execution_count": 5,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# Initiate and Train    \n",
+    "model_rnn = RNNClassifier(\n",
+    "    vocab_size = len(vocab),\n",
+    "    embed_dim  = 128,\n",
+    "    hidden_dim = 256,\n",
+    "    n_classes  = 2\n",
+    ")\n",
+    "print(model_rnn)\n",
+    "\n",
+    "train_rnn = ModelTrainStats(\n",
+    "    name=\"Vanilla RNN\",\n",
+    "    model=model_rnn\n",
+    ")\n",
+    "models.add(train_rnn)\n",
+    "\n",
+    "history_rnn = run_training(train_rnn, train_loader, test_loader)\n",
+    "\n",
+    "history_rnn"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "88f4437c",
+   "metadata": {},
+   "source": [
+    "***Hint:*** Use <span style=\"font-family: 'JetBrians';\"> device = torch.device(\"cuda\" if torch.cuda.is_available() else \"cpu\")</span>\n",
+    "and call <span style=\"font-family: 'JetBrians';\"> model.to(device)</span> once before training."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "41ca8fcd",
+   "metadata": {},
+   "source": [
+    "### TASK 1.2. OBSERVATIONS\n",
+    "\n",
+    "In a markdown cell, answer the following:\n",
+    "\n",
+    "(1). What test accuracy did your vanilla RNN achieve?\n",
+    "\n",
+    "(2). Plot training loss vs. epoch. Does the model converge? Any sign of overfitting?\n",
+    "\n",
+    "(3). What is the vanishing gradient problem and why might it affect this model on long reviews? (2–3 sentences, no equations needed.)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "id": "770521d3",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/markdown": [
+       "(1) The final test accuracy was 62.26%."
+      ],
+      "text/plain": [
+       "<IPython.core.display.Markdown object>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "data": {
+      "text/markdown": [
+       "(2) Yes the model shows signs of converging. After 5 epochs the train loss and test loss are both decreasing. Signs of overfitting may be present as test_loss and train_loss diverge. More epochs would be required to confirm."
+      ],
+      "text/plain": [
+       "<IPython.core.display.Markdown object>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "data": {
+      "text/markdown": [
+       "(3) During training backpropagation is used to determine the rate at which the loss value changes with each weight in the network. For every nurmerical operation taken by the network, backpropagation will compute the partial gradient of the operation and multiply that with the backpropagated gradient. For long input sequences, the RNN has to recurse over the sequence and if partial gradient terms are less than 1 (or larger than 1) in magnitude, values shrink towards $0$ (or $\\infty$ (exploding gradients)). Ultimately this means early timesteps get almost no learning signal and the RNN will fail to learn long-range dependencies.\n"
+      ],
+      "text/plain": [
+       "<IPython.core.display.Markdown object>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "data": {
+      "application/vnd.plotly.v1+json": {
+       "config": {
+        "plotlyServerURL": "https://plot.ly"
+       },
+       "data": [
+        {
+         "hovertemplate": "variable=train_loss<br>Epoch=%{x}<br>Loss=%{y}<extra></extra>",
+         "legendgroup": "train_loss",
+         "line": {
+          "color": "#1F77B4",
+          "dash": "solid"
+         },
+         "marker": {
+          "symbol": "circle"
+         },
+         "mode": "lines",
+         "name": "train_loss",
+         "orientation": "v",
+         "showlegend": true,
+         "type": "scatter",
+         "x": {
+          "bdata": "AQIDBAU=",
+          "dtype": "i1"
+         },
+         "xaxis": "x",
+         "y": {
+          "bdata": "viBCTTEi5j+sfxsaOvDkPzQr0pnDWuQ/Fda/TfDV4z9VbR9wZyPjPw==",
+          "dtype": "f8"
+         },
+         "yaxis": "y"
+        },
+        {
+         "hovertemplate": "variable=test_loss<br>Epoch=%{x}<br>Loss=%{y}<extra></extra>",
+         "legendgroup": "test_loss",
+         "line": {
+          "color": "#FF7F0E",
+          "dash": "solid"
+         },
+         "marker": {
+          "symbol": "circle"
+         },
+         "mode": "lines",
+         "name": "test_loss",
+         "orientation": "v",
+         "showlegend": true,
+         "type": "scatter",
+         "x": {
+          "bdata": "AQIDBAU=",
+          "dtype": "i1"
+         },
+         "xaxis": "x",
+         "y": {
+          "bdata": "xERx9VvL5T97ZbPCqHLkP/c29J2BW+U/vA19B6CA5D8WxVV7ZbTkPw==",
+          "dtype": "f8"
+         },
+         "yaxis": "y"
+        }
+       ],
+       "layout": {
+        "legend": {
+         "title": {
+          "text": "variable"
+         },
+         "tracegroupgap": 0
+        },
+        "margin": {
+         "t": 60
+        },
+        "template": {
+         "data": {
+          "bar": [
+           {
+            "error_x": {
+             "color": "rgb(36,36,36)"
+            },
+            "error_y": {
+             "color": "rgb(36,36,36)"
+            },
+            "marker": {
+             "line": {
+              "color": "white",
+              "width": 0.5
+             },
+             "pattern": {
+              "fillmode": "overlay",
+              "size": 10,
+              "solidity": 0.2
+             }
+            },
+            "type": "bar"
+           }
+          ],
+          "barpolar": [
+           {
+            "marker": {
+             "line": {
+              "color": "white",
+              "width": 0.5
+             },
+             "pattern": {
+              "fillmode": "overlay",
+              "size": 10,
+              "solidity": 0.2
+             }
+            },
+            "type": "barpolar"
+           }
+          ],
+          "carpet": [
+           {
+            "aaxis": {
+             "endlinecolor": "rgb(36,36,36)",
+             "gridcolor": "white",
+             "linecolor": "white",
+             "minorgridcolor": "white",
+             "startlinecolor": "rgb(36,36,36)"
+            },
+            "baxis": {
+             "endlinecolor": "rgb(36,36,36)",
+             "gridcolor": "white",
+             "linecolor": "white",
+             "minorgridcolor": "white",
+             "startlinecolor": "rgb(36,36,36)"
+            },
+            "type": "carpet"
+           }
+          ],
+          "choropleth": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "type": "choropleth"
+           }
+          ],
+          "contour": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "colorscale": [
+             [
+              0,
+              "#440154"
+             ],
+             [
+              0.1111111111111111,
+              "#482878"
+             ],
+             [
+              0.2222222222222222,
+              "#3e4989"
+             ],
+             [
+              0.3333333333333333,
+              "#31688e"
+             ],
+             [
+              0.4444444444444444,
+              "#26828e"
+             ],
+             [
+              0.5555555555555556,
+              "#1f9e89"
+             ],
+             [
+              0.6666666666666666,
+              "#35b779"
+             ],
+             [
+              0.7777777777777778,
+              "#6ece58"
+             ],
+             [
+              0.8888888888888888,
+              "#b5de2b"
+             ],
+             [
+              1,
+              "#fde725"
+             ]
+            ],
+            "type": "contour"
+           }
+          ],
+          "contourcarpet": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "type": "contourcarpet"
+           }
+          ],
+          "heatmap": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "colorscale": [
+             [
+              0,
+              "#440154"
+             ],
+             [
+              0.1111111111111111,
+              "#482878"
+             ],
+             [
+              0.2222222222222222,
+              "#3e4989"
+             ],
+             [
+              0.3333333333333333,
+              "#31688e"
+             ],
+             [
+              0.4444444444444444,
+              "#26828e"
+             ],
+             [
+              0.5555555555555556,
+              "#1f9e89"
+             ],
+             [
+              0.6666666666666666,
+              "#35b779"
+             ],
+             [
+              0.7777777777777778,
+              "#6ece58"
+             ],
+             [
+              0.8888888888888888,
+              "#b5de2b"
+             ],
+             [
+              1,
+              "#fde725"
+             ]
+            ],
+            "type": "heatmap"
+           }
+          ],
+          "histogram": [
+           {
+            "marker": {
+             "line": {
+              "color": "white",
+              "width": 0.6
+             }
+            },
+            "type": "histogram"
+           }
+          ],
+          "histogram2d": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "colorscale": [
+             [
+              0,
+              "#440154"
+             ],
+             [
+              0.1111111111111111,
+              "#482878"
+             ],
+             [
+              0.2222222222222222,
+              "#3e4989"
+             ],
+             [
+              0.3333333333333333,
+              "#31688e"
+             ],
+             [
+              0.4444444444444444,
+              "#26828e"
+             ],
+             [
+              0.5555555555555556,
+              "#1f9e89"
+             ],
+             [
+              0.6666666666666666,
+              "#35b779"
+             ],
+             [
+              0.7777777777777778,
+              "#6ece58"
+             ],
+             [
+              0.8888888888888888,
+              "#b5de2b"
+             ],
+             [
+              1,
+              "#fde725"
+             ]
+            ],
+            "type": "histogram2d"
+           }
+          ],
+          "histogram2dcontour": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "colorscale": [
+             [
+              0,
+              "#440154"
+             ],
+             [
+              0.1111111111111111,
+              "#482878"
+             ],
+             [
+              0.2222222222222222,
+              "#3e4989"
+             ],
+             [
+              0.3333333333333333,
+              "#31688e"
+             ],
+             [
+              0.4444444444444444,
+              "#26828e"
+             ],
+             [
+              0.5555555555555556,
+              "#1f9e89"
+             ],
+             [
+              0.6666666666666666,
+              "#35b779"
+             ],
+             [
+              0.7777777777777778,
+              "#6ece58"
+             ],
+             [
+              0.8888888888888888,
+              "#b5de2b"
+             ],
+             [
+              1,
+              "#fde725"
+             ]
+            ],
+            "type": "histogram2dcontour"
+           }
+          ],
+          "mesh3d": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "type": "mesh3d"
+           }
+          ],
+          "parcoords": [
+           {
+            "line": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "parcoords"
+           }
+          ],
+          "pie": [
+           {
+            "automargin": true,
+            "type": "pie"
+           }
+          ],
+          "scatter": [
+           {
+            "fillpattern": {
+             "fillmode": "overlay",
+             "size": 10,
+             "solidity": 0.2
+            },
+            "type": "scatter"
+           }
+          ],
+          "scatter3d": [
+           {
+            "line": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scatter3d"
+           }
+          ],
+          "scattercarpet": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scattercarpet"
+           }
+          ],
+          "scattergeo": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scattergeo"
+           }
+          ],
+          "scattergl": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scattergl"
+           }
+          ],
+          "scattermap": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scattermap"
+           }
+          ],
+          "scattermapbox": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scattermapbox"
+           }
+          ],
+          "scatterpolar": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scatterpolar"
+           }
+          ],
+          "scatterpolargl": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scatterpolargl"
+           }
+          ],
+          "scatterternary": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scatterternary"
+           }
+          ],
+          "surface": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "colorscale": [
+             [
+              0,
+              "#440154"
+             ],
+             [
+              0.1111111111111111,
+              "#482878"
+             ],
+             [
+              0.2222222222222222,
+              "#3e4989"
+             ],
+             [
+              0.3333333333333333,
+              "#31688e"
+             ],
+             [
+              0.4444444444444444,
+              "#26828e"
+             ],
+             [
+              0.5555555555555556,
+              "#1f9e89"
+             ],
+             [
+              0.6666666666666666,
+              "#35b779"
+             ],
+             [
+              0.7777777777777778,
+              "#6ece58"
+             ],
+             [
+              0.8888888888888888,
+              "#b5de2b"
+             ],
+             [
+              1,
+              "#fde725"
+             ]
+            ],
+            "type": "surface"
+           }
+          ],
+          "table": [
+           {
+            "cells": {
+             "fill": {
+              "color": "rgb(237,237,237)"
+             },
+             "line": {
+              "color": "white"
+             }
+            },
+            "header": {
+             "fill": {
+              "color": "rgb(217,217,217)"
+             },
+             "line": {
+              "color": "white"
+             }
+            },
+            "type": "table"
+           }
+          ]
+         },
+         "layout": {
+          "annotationdefaults": {
+           "arrowhead": 0,
+           "arrowwidth": 1
+          },
+          "autotypenumbers": "strict",
+          "coloraxis": {
+           "colorbar": {
+            "outlinewidth": 1,
+            "tickcolor": "rgb(36,36,36)",
+            "ticks": "outside"
+           }
+          },
+          "colorscale": {
+           "diverging": [
+            [
+             0,
+             "rgb(103,0,31)"
+            ],
+            [
+             0.1,
+             "rgb(178,24,43)"
+            ],
+            [
+             0.2,
+             "rgb(214,96,77)"
+            ],
+            [
+             0.3,
+             "rgb(244,165,130)"
+            ],
+            [
+             0.4,
+             "rgb(253,219,199)"
+            ],
+            [
+             0.5,
+             "rgb(247,247,247)"
+            ],
+            [
+             0.6,
+             "rgb(209,229,240)"
+            ],
+            [
+             0.7,
+             "rgb(146,197,222)"
+            ],
+            [
+             0.8,
+             "rgb(67,147,195)"
+            ],
+            [
+             0.9,
+             "rgb(33,102,172)"
+            ],
+            [
+             1,
+             "rgb(5,48,97)"
+            ]
+           ],
+           "sequential": [
+            [
+             0,
+             "#440154"
+            ],
+            [
+             0.1111111111111111,
+             "#482878"
+            ],
+            [
+             0.2222222222222222,
+             "#3e4989"
+            ],
+            [
+             0.3333333333333333,
+             "#31688e"
+            ],
+            [
+             0.4444444444444444,
+             "#26828e"
+            ],
+            [
+             0.5555555555555556,
+             "#1f9e89"
+            ],
+            [
+             0.6666666666666666,
+             "#35b779"
+            ],
+            [
+             0.7777777777777778,
+             "#6ece58"
+            ],
+            [
+             0.8888888888888888,
+             "#b5de2b"
+            ],
+            [
+             1,
+             "#fde725"
+            ]
+           ],
+           "sequentialminus": [
+            [
+             0,
+             "#440154"
+            ],
+            [
+             0.1111111111111111,
+             "#482878"
+            ],
+            [
+             0.2222222222222222,
+             "#3e4989"
+            ],
+            [
+             0.3333333333333333,
+             "#31688e"
+            ],
+            [
+             0.4444444444444444,
+             "#26828e"
+            ],
+            [
+             0.5555555555555556,
+             "#1f9e89"
+            ],
+            [
+             0.6666666666666666,
+             "#35b779"
+            ],
+            [
+             0.7777777777777778,
+             "#6ece58"
+            ],
+            [
+             0.8888888888888888,
+             "#b5de2b"
+            ],
+            [
+             1,
+             "#fde725"
+            ]
+           ]
+          },
+          "colorway": [
+           "#1F77B4",
+           "#FF7F0E",
+           "#2CA02C",
+           "#D62728",
+           "#9467BD",
+           "#8C564B",
+           "#E377C2",
+           "#7F7F7F",
+           "#BCBD22",
+           "#17BECF"
+          ],
+          "font": {
+           "color": "rgb(36,36,36)"
+          },
+          "geo": {
+           "bgcolor": "white",
+           "lakecolor": "white",
+           "landcolor": "white",
+           "showlakes": true,
+           "showland": true,
+           "subunitcolor": "white"
+          },
+          "hoverlabel": {
+           "align": "left"
+          },
+          "hovermode": "closest",
+          "mapbox": {
+           "style": "light"
+          },
+          "paper_bgcolor": "white",
+          "plot_bgcolor": "white",
+          "polar": {
+           "angularaxis": {
+            "gridcolor": "rgb(232,232,232)",
+            "linecolor": "rgb(36,36,36)",
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside"
+           },
+           "bgcolor": "white",
+           "radialaxis": {
+            "gridcolor": "rgb(232,232,232)",
+            "linecolor": "rgb(36,36,36)",
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside"
+           }
+          },
+          "scene": {
+           "xaxis": {
+            "backgroundcolor": "white",
+            "gridcolor": "rgb(232,232,232)",
+            "gridwidth": 2,
+            "linecolor": "rgb(36,36,36)",
+            "showbackground": true,
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside",
+            "zeroline": false,
+            "zerolinecolor": "rgb(36,36,36)"
+           },
+           "yaxis": {
+            "backgroundcolor": "white",
+            "gridcolor": "rgb(232,232,232)",
+            "gridwidth": 2,
+            "linecolor": "rgb(36,36,36)",
+            "showbackground": true,
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside",
+            "zeroline": false,
+            "zerolinecolor": "rgb(36,36,36)"
+           },
+           "zaxis": {
+            "backgroundcolor": "white",
+            "gridcolor": "rgb(232,232,232)",
+            "gridwidth": 2,
+            "linecolor": "rgb(36,36,36)",
+            "showbackground": true,
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside",
+            "zeroline": false,
+            "zerolinecolor": "rgb(36,36,36)"
+           }
+          },
+          "shapedefaults": {
+           "fillcolor": "black",
+           "line": {
+            "width": 0
+           },
+           "opacity": 0.3
+          },
+          "ternary": {
+           "aaxis": {
+            "gridcolor": "rgb(232,232,232)",
+            "linecolor": "rgb(36,36,36)",
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside"
+           },
+           "baxis": {
+            "gridcolor": "rgb(232,232,232)",
+            "linecolor": "rgb(36,36,36)",
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside"
+           },
+           "bgcolor": "white",
+           "caxis": {
+            "gridcolor": "rgb(232,232,232)",
+            "linecolor": "rgb(36,36,36)",
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside"
+           }
+          },
+          "title": {
+           "x": 0.05
+          },
+          "xaxis": {
+           "automargin": true,
+           "gridcolor": "rgb(232,232,232)",
+           "linecolor": "rgb(36,36,36)",
+           "showgrid": false,
+           "showline": true,
+           "ticks": "outside",
+           "title": {
+            "standoff": 15
+           },
+           "zeroline": false,
+           "zerolinecolor": "rgb(36,36,36)"
+          },
+          "yaxis": {
+           "automargin": true,
+           "gridcolor": "rgb(232,232,232)",
+           "linecolor": "rgb(36,36,36)",
+           "showgrid": false,
+           "showline": true,
+           "ticks": "outside",
+           "title": {
+            "standoff": 15
+           },
+           "zeroline": false,
+           "zerolinecolor": "rgb(36,36,36)"
+          }
+         }
+        },
+        "xaxis": {
+         "anchor": "y",
+         "domain": [
+          0,
+          1
+         ],
+         "title": {
+          "text": "Epoch"
+         }
+        },
+        "yaxis": {
+         "anchor": "x",
+         "domain": [
+          0,
+          1
+         ],
+         "title": {
+          "text": "Loss"
+         }
+        }
+       }
+      }
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "first_answer = f\"(1) The final test accuracy was {history_rnn.test_acc[-1]*100:.2f}%.\"\n",
+    "display(Markdown(first_answer))\n",
+    "\n",
+    "plot = px.line(history_rnn.get_dict(), x=torch.arange(1,6), y=[\"train_loss\", \"test_loss\"], labels={\"value\": \"Loss\", \"x\": \"Epoch\"})\n",
+    "second_answer = \"(2) Yes the model shows signs of converging. After 5 epochs the train loss and test loss are both decreasing. Signs of overfitting may be present as test_loss and train_loss diverge. More epochs would be required to confirm.\"\n",
+    "display(Markdown(second_answer))\n",
+    "\n",
+    "third_answer = \"\"\"(3) During training backpropagation is used to determine the rate at which the loss value changes with each weight in the network. For every nurmerical operation taken by the network, backpropagation will compute the partial gradient of the operation and multiply that with the backpropagated gradient. For long input sequences, the RNN has to recurse over the sequence and if partial gradient terms are less than 1 (or larger than 1) in magnitude, values shrink towards $0$ (or $\\\\infty$ (exploding gradients)). Ultimately this means early timesteps get almost no learning signal and the RNN will fail to learn long-range dependencies.\n",
+    "\"\"\"\n",
+    "display(Markdown(third_answer))\n",
+    "\n",
+    "plot.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "26454cb5",
+   "metadata": {},
+   "source": [
+    "## PART 2. LSTM Sentiment Classifier: From RNN to LSTM\n",
+    "\n",
+    "The Long Short-Term Memory (LSTM) adds gates that let the model decide what to remember and what to forget. In PyTorch, swapping an RNN for an LSTM requires only one line change — but the performance gain is substantial."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "c6fc23df",
+   "metadata": {},
+   "source": [
+    "The key difference: <span style=\"font-family: 'JetBrians';\"> nn.LSTM </span> returns \n",
+    "(output, (hidden, cell)) instead of (output, hidden). We use only the final hidden state for classification."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "d3608f89-d999-4c8a-97e4-79339fbd9b8c",
+   "metadata": {},
+   "source": [
+    "### Task 2.1. DEFINE LSTM MODEL"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "id": "4f04ff91",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "LSTMClassifier(\n",
+      "  (embedding): Embedding(20002, 128)\n",
+      "  (lstm): LSTM(128, 256, num_layers=2, batch_first=True, dropout=0.5)\n",
+      "  (fc): Linear(in_features=256, out_features=2, bias=True)\n",
+      ")\n",
+      "Epoch 1/5 Train Loss: 0.6276 | Train Acc: 0.6409 | Test Loss: 0.5714 | Test Acc: 0.7274\n",
+      "Epoch 2/5 Train Loss: 0.5665 | Train Acc: 0.7066 | Test Loss: 0.4542 | Test Acc: 0.7939\n",
+      "Epoch 3/5 Train Loss: 0.3913 | Train Acc: 0.8274 | Test Loss: 0.4155 | Test Acc: 0.8291\n",
+      "Epoch 4/5 Train Loss: 0.2969 | Train Acc: 0.8765 | Test Loss: 0.3417 | Test Acc: 0.8522\n",
+      "Epoch 5/5 Train Loss: 0.2366 | Train Acc: 0.9075 | Test Loss: 0.3189 | Test Acc: 0.8660\n"
+     ]
+    }
+   ],
+   "source": [
+    "class LSTMClassifier(nn.Module):\n",
+    "    def __init__(self, vocab_size, embed_dim, hidden_dim, n_classes,\n",
+    "                 n_layers=2, dropout=0.5):\n",
+    "        \"\"\" Your Code\"\"\"\n",
+    "        super().__init__()\n",
+    "        self.n_layers = n_layers\n",
+    "        self.embedding = nn.Embedding(vocab_size, embed_dim)\n",
+    "        self.lstm = nn.LSTM(embed_dim, hidden_dim, batch_first=True, num_layers=n_layers, dropout=dropout)\n",
+    "        self.fc = nn.Linear(in_features=hidden_dim, out_features=n_classes)\n",
+    "\n",
+    "    # def forward(self, x):\n",
+    "    def forward(self, x, lengths): # had to modify forward pass so that lengths can be used to extract the correct final hidden state\n",
+    "        \"\"\" Your Code\"\"\"\n",
+    "\n",
+    "        embeddings = self.embedding(x)\n",
+    "        o, (_, _) = self.lstm(embeddings)\n",
+    "        \n",
+    "        batch_size = x.size(0)\n",
+    "        actual_last_outputs = o[torch.arange(batch_size), lengths - 1]\n",
+    "        \n",
+    "        return self.fc(actual_last_outputs)\n",
+    "\n",
+    "model_lstm = LSTMClassifier(\n",
+    "    vocab_size = len(vocab),\n",
+    "    embed_dim  = 128,\n",
+    "    hidden_dim = 256,\n",
+    "    n_classes  = 2,\n",
+    "    n_layers   = 2\n",
+    ")\n",
+    "print(model_lstm)\n",
+    "\n",
+    "train_lstm = ModelTrainStats(\n",
+    "    name=\"LSTM\",\n",
+    "    model=model_lstm\n",
+    ")\n",
+    "models.add(train_lstm)\n",
+    "\n",
+    "history_lstm = run_training(train_lstm, train_loader, test_loader)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "0cddc563",
+   "metadata": {},
+   "source": [
+    "### TASK 2.2. TRAIN THE LSTM\n",
+    "\n",
+    "Re-use your training loop from Part 1 to train model_lstm for 5 epochs with the same hyperparameters.\n",
+    "\n",
+    "***REQUIREMENTS***\n",
+    "\n",
+    "(1). Report final test accuracy.\n",
+    "\n",
+    "(2). On the same plot, show training loss curves for both the RNN and the LSTM. Label each line clearly.\n",
+    "\n",
+    "(3). Which model trains faster (loss drops quicker)? Why might that be?"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "id": "8a12a664",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/markdown": [
+       "(1) The final test accuracy was 86.60%."
+      ],
+      "text/plain": [
+       "<IPython.core.display.Markdown object>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "data": {
+      "text/markdown": [
+       "(2) See plot below"
+      ],
+      "text/plain": [
+       "<IPython.core.display.Markdown object>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "data": {
+      "text/markdown": [
+       "(3) The LSTM trains faster. The LSTM cell state creates a more direct pathway for information and gradients to flow across many time steps. In a simple RNN, gradients must repeatedly pass through recurrent weight matrices, making them more likely to vanish. In an LSTM, the forget gate can preserve relevant memory by keeping the cell state largely unchanged, allowing earlier sentiment cues to influence later predictions more effectively and allowing the model to converge quicker.\n"
+      ],
+      "text/plain": [
+       "<IPython.core.display.Markdown object>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "data": {
+      "application/vnd.plotly.v1+json": {
+       "config": {
+        "plotlyServerURL": "https://plot.ly"
+       },
+       "data": [
+        {
+         "hovertemplate": "variable=lstm_train_loss<br>Epoch=%{x}<br>Loss=%{y}<extra></extra>",
+         "legendgroup": "lstm_train_loss",
+         "line": {
+          "color": "#1F77B4",
+          "dash": "solid"
+         },
+         "marker": {
+          "symbol": "circle"
+         },
+         "mode": "lines",
+         "name": "lstm_train_loss",
+         "orientation": "v",
+         "showlegend": true,
+         "type": "scatter",
+         "x": {
+          "bdata": "AQIDBAU=",
+          "dtype": "i1"
+         },
+         "xaxis": "x",
+         "y": {
+          "bdata": "brHHyUMV5D8leUF0ZyDiPzS/RBGVCtk/SSccuwsB0z9iWP+mFErOPw==",
+          "dtype": "f8"
+         },
+         "yaxis": "y"
+        },
+        {
+         "hovertemplate": "variable=rnn_train_loss<br>Epoch=%{x}<br>Loss=%{y}<extra></extra>",
+         "legendgroup": "rnn_train_loss",
+         "line": {
+          "color": "#FF7F0E",
+          "dash": "solid"
+         },
+         "marker": {
+          "symbol": "circle"
+         },
+         "mode": "lines",
+         "name": "rnn_train_loss",
+         "orientation": "v",
+         "showlegend": true,
+         "type": "scatter",
+         "x": {
+          "bdata": "AQIDBAU=",
+          "dtype": "i1"
+         },
+         "xaxis": "x",
+         "y": {
+          "bdata": "viBCTTEi5j+sfxsaOvDkPzQr0pnDWuQ/Fda/TfDV4z9VbR9wZyPjPw==",
+          "dtype": "f8"
+         },
+         "yaxis": "y"
+        }
+       ],
+       "layout": {
+        "legend": {
+         "title": {
+          "text": "variable"
+         },
+         "tracegroupgap": 0
+        },
+        "margin": {
+         "t": 60
+        },
+        "template": {
+         "data": {
+          "bar": [
+           {
+            "error_x": {
+             "color": "rgb(36,36,36)"
+            },
+            "error_y": {
+             "color": "rgb(36,36,36)"
+            },
+            "marker": {
+             "line": {
+              "color": "white",
+              "width": 0.5
+             },
+             "pattern": {
+              "fillmode": "overlay",
+              "size": 10,
+              "solidity": 0.2
+             }
+            },
+            "type": "bar"
+           }
+          ],
+          "barpolar": [
+           {
+            "marker": {
+             "line": {
+              "color": "white",
+              "width": 0.5
+             },
+             "pattern": {
+              "fillmode": "overlay",
+              "size": 10,
+              "solidity": 0.2
+             }
+            },
+            "type": "barpolar"
+           }
+          ],
+          "carpet": [
+           {
+            "aaxis": {
+             "endlinecolor": "rgb(36,36,36)",
+             "gridcolor": "white",
+             "linecolor": "white",
+             "minorgridcolor": "white",
+             "startlinecolor": "rgb(36,36,36)"
+            },
+            "baxis": {
+             "endlinecolor": "rgb(36,36,36)",
+             "gridcolor": "white",
+             "linecolor": "white",
+             "minorgridcolor": "white",
+             "startlinecolor": "rgb(36,36,36)"
+            },
+            "type": "carpet"
+           }
+          ],
+          "choropleth": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "type": "choropleth"
+           }
+          ],
+          "contour": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "colorscale": [
+             [
+              0,
+              "#440154"
+             ],
+             [
+              0.1111111111111111,
+              "#482878"
+             ],
+             [
+              0.2222222222222222,
+              "#3e4989"
+             ],
+             [
+              0.3333333333333333,
+              "#31688e"
+             ],
+             [
+              0.4444444444444444,
+              "#26828e"
+             ],
+             [
+              0.5555555555555556,
+              "#1f9e89"
+             ],
+             [
+              0.6666666666666666,
+              "#35b779"
+             ],
+             [
+              0.7777777777777778,
+              "#6ece58"
+             ],
+             [
+              0.8888888888888888,
+              "#b5de2b"
+             ],
+             [
+              1,
+              "#fde725"
+             ]
+            ],
+            "type": "contour"
+           }
+          ],
+          "contourcarpet": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "type": "contourcarpet"
+           }
+          ],
+          "heatmap": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "colorscale": [
+             [
+              0,
+              "#440154"
+             ],
+             [
+              0.1111111111111111,
+              "#482878"
+             ],
+             [
+              0.2222222222222222,
+              "#3e4989"
+             ],
+             [
+              0.3333333333333333,
+              "#31688e"
+             ],
+             [
+              0.4444444444444444,
+              "#26828e"
+             ],
+             [
+              0.5555555555555556,
+              "#1f9e89"
+             ],
+             [
+              0.6666666666666666,
+              "#35b779"
+             ],
+             [
+              0.7777777777777778,
+              "#6ece58"
+             ],
+             [
+              0.8888888888888888,
+              "#b5de2b"
+             ],
+             [
+              1,
+              "#fde725"
+             ]
+            ],
+            "type": "heatmap"
+           }
+          ],
+          "histogram": [
+           {
+            "marker": {
+             "line": {
+              "color": "white",
+              "width": 0.6
+             }
+            },
+            "type": "histogram"
+           }
+          ],
+          "histogram2d": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "colorscale": [
+             [
+              0,
+              "#440154"
+             ],
+             [
+              0.1111111111111111,
+              "#482878"
+             ],
+             [
+              0.2222222222222222,
+              "#3e4989"
+             ],
+             [
+              0.3333333333333333,
+              "#31688e"
+             ],
+             [
+              0.4444444444444444,
+              "#26828e"
+             ],
+             [
+              0.5555555555555556,
+              "#1f9e89"
+             ],
+             [
+              0.6666666666666666,
+              "#35b779"
+             ],
+             [
+              0.7777777777777778,
+              "#6ece58"
+             ],
+             [
+              0.8888888888888888,
+              "#b5de2b"
+             ],
+             [
+              1,
+              "#fde725"
+             ]
+            ],
+            "type": "histogram2d"
+           }
+          ],
+          "histogram2dcontour": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "colorscale": [
+             [
+              0,
+              "#440154"
+             ],
+             [
+              0.1111111111111111,
+              "#482878"
+             ],
+             [
+              0.2222222222222222,
+              "#3e4989"
+             ],
+             [
+              0.3333333333333333,
+              "#31688e"
+             ],
+             [
+              0.4444444444444444,
+              "#26828e"
+             ],
+             [
+              0.5555555555555556,
+              "#1f9e89"
+             ],
+             [
+              0.6666666666666666,
+              "#35b779"
+             ],
+             [
+              0.7777777777777778,
+              "#6ece58"
+             ],
+             [
+              0.8888888888888888,
+              "#b5de2b"
+             ],
+             [
+              1,
+              "#fde725"
+             ]
+            ],
+            "type": "histogram2dcontour"
+           }
+          ],
+          "mesh3d": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "type": "mesh3d"
+           }
+          ],
+          "parcoords": [
+           {
+            "line": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "parcoords"
+           }
+          ],
+          "pie": [
+           {
+            "automargin": true,
+            "type": "pie"
+           }
+          ],
+          "scatter": [
+           {
+            "fillpattern": {
+             "fillmode": "overlay",
+             "size": 10,
+             "solidity": 0.2
+            },
+            "type": "scatter"
+           }
+          ],
+          "scatter3d": [
+           {
+            "line": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scatter3d"
+           }
+          ],
+          "scattercarpet": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scattercarpet"
+           }
+          ],
+          "scattergeo": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scattergeo"
+           }
+          ],
+          "scattergl": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scattergl"
+           }
+          ],
+          "scattermap": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scattermap"
+           }
+          ],
+          "scattermapbox": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scattermapbox"
+           }
+          ],
+          "scatterpolar": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scatterpolar"
+           }
+          ],
+          "scatterpolargl": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scatterpolargl"
+           }
+          ],
+          "scatterternary": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scatterternary"
+           }
+          ],
+          "surface": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "colorscale": [
+             [
+              0,
+              "#440154"
+             ],
+             [
+              0.1111111111111111,
+              "#482878"
+             ],
+             [
+              0.2222222222222222,
+              "#3e4989"
+             ],
+             [
+              0.3333333333333333,
+              "#31688e"
+             ],
+             [
+              0.4444444444444444,
+              "#26828e"
+             ],
+             [
+              0.5555555555555556,
+              "#1f9e89"
+             ],
+             [
+              0.6666666666666666,
+              "#35b779"
+             ],
+             [
+              0.7777777777777778,
+              "#6ece58"
+             ],
+             [
+              0.8888888888888888,
+              "#b5de2b"
+             ],
+             [
+              1,
+              "#fde725"
+             ]
+            ],
+            "type": "surface"
+           }
+          ],
+          "table": [
+           {
+            "cells": {
+             "fill": {
+              "color": "rgb(237,237,237)"
+             },
+             "line": {
+              "color": "white"
+             }
+            },
+            "header": {
+             "fill": {
+              "color": "rgb(217,217,217)"
+             },
+             "line": {
+              "color": "white"
+             }
+            },
+            "type": "table"
+           }
+          ]
+         },
+         "layout": {
+          "annotationdefaults": {
+           "arrowhead": 0,
+           "arrowwidth": 1
+          },
+          "autotypenumbers": "strict",
+          "coloraxis": {
+           "colorbar": {
+            "outlinewidth": 1,
+            "tickcolor": "rgb(36,36,36)",
+            "ticks": "outside"
+           }
+          },
+          "colorscale": {
+           "diverging": [
+            [
+             0,
+             "rgb(103,0,31)"
+            ],
+            [
+             0.1,
+             "rgb(178,24,43)"
+            ],
+            [
+             0.2,
+             "rgb(214,96,77)"
+            ],
+            [
+             0.3,
+             "rgb(244,165,130)"
+            ],
+            [
+             0.4,
+             "rgb(253,219,199)"
+            ],
+            [
+             0.5,
+             "rgb(247,247,247)"
+            ],
+            [
+             0.6,
+             "rgb(209,229,240)"
+            ],
+            [
+             0.7,
+             "rgb(146,197,222)"
+            ],
+            [
+             0.8,
+             "rgb(67,147,195)"
+            ],
+            [
+             0.9,
+             "rgb(33,102,172)"
+            ],
+            [
+             1,
+             "rgb(5,48,97)"
+            ]
+           ],
+           "sequential": [
+            [
+             0,
+             "#440154"
+            ],
+            [
+             0.1111111111111111,
+             "#482878"
+            ],
+            [
+             0.2222222222222222,
+             "#3e4989"
+            ],
+            [
+             0.3333333333333333,
+             "#31688e"
+            ],
+            [
+             0.4444444444444444,
+             "#26828e"
+            ],
+            [
+             0.5555555555555556,
+             "#1f9e89"
+            ],
+            [
+             0.6666666666666666,
+             "#35b779"
+            ],
+            [
+             0.7777777777777778,
+             "#6ece58"
+            ],
+            [
+             0.8888888888888888,
+             "#b5de2b"
+            ],
+            [
+             1,
+             "#fde725"
+            ]
+           ],
+           "sequentialminus": [
+            [
+             0,
+             "#440154"
+            ],
+            [
+             0.1111111111111111,
+             "#482878"
+            ],
+            [
+             0.2222222222222222,
+             "#3e4989"
+            ],
+            [
+             0.3333333333333333,
+             "#31688e"
+            ],
+            [
+             0.4444444444444444,
+             "#26828e"
+            ],
+            [
+             0.5555555555555556,
+             "#1f9e89"
+            ],
+            [
+             0.6666666666666666,
+             "#35b779"
+            ],
+            [
+             0.7777777777777778,
+             "#6ece58"
+            ],
+            [
+             0.8888888888888888,
+             "#b5de2b"
+            ],
+            [
+             1,
+             "#fde725"
+            ]
+           ]
+          },
+          "colorway": [
+           "#1F77B4",
+           "#FF7F0E",
+           "#2CA02C",
+           "#D62728",
+           "#9467BD",
+           "#8C564B",
+           "#E377C2",
+           "#7F7F7F",
+           "#BCBD22",
+           "#17BECF"
+          ],
+          "font": {
+           "color": "rgb(36,36,36)"
+          },
+          "geo": {
+           "bgcolor": "white",
+           "lakecolor": "white",
+           "landcolor": "white",
+           "showlakes": true,
+           "showland": true,
+           "subunitcolor": "white"
+          },
+          "hoverlabel": {
+           "align": "left"
+          },
+          "hovermode": "closest",
+          "mapbox": {
+           "style": "light"
+          },
+          "paper_bgcolor": "white",
+          "plot_bgcolor": "white",
+          "polar": {
+           "angularaxis": {
+            "gridcolor": "rgb(232,232,232)",
+            "linecolor": "rgb(36,36,36)",
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside"
+           },
+           "bgcolor": "white",
+           "radialaxis": {
+            "gridcolor": "rgb(232,232,232)",
+            "linecolor": "rgb(36,36,36)",
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside"
+           }
+          },
+          "scene": {
+           "xaxis": {
+            "backgroundcolor": "white",
+            "gridcolor": "rgb(232,232,232)",
+            "gridwidth": 2,
+            "linecolor": "rgb(36,36,36)",
+            "showbackground": true,
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside",
+            "zeroline": false,
+            "zerolinecolor": "rgb(36,36,36)"
+           },
+           "yaxis": {
+            "backgroundcolor": "white",
+            "gridcolor": "rgb(232,232,232)",
+            "gridwidth": 2,
+            "linecolor": "rgb(36,36,36)",
+            "showbackground": true,
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside",
+            "zeroline": false,
+            "zerolinecolor": "rgb(36,36,36)"
+           },
+           "zaxis": {
+            "backgroundcolor": "white",
+            "gridcolor": "rgb(232,232,232)",
+            "gridwidth": 2,
+            "linecolor": "rgb(36,36,36)",
+            "showbackground": true,
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside",
+            "zeroline": false,
+            "zerolinecolor": "rgb(36,36,36)"
+           }
+          },
+          "shapedefaults": {
+           "fillcolor": "black",
+           "line": {
+            "width": 0
+           },
+           "opacity": 0.3
+          },
+          "ternary": {
+           "aaxis": {
+            "gridcolor": "rgb(232,232,232)",
+            "linecolor": "rgb(36,36,36)",
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside"
+           },
+           "baxis": {
+            "gridcolor": "rgb(232,232,232)",
+            "linecolor": "rgb(36,36,36)",
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside"
+           },
+           "bgcolor": "white",
+           "caxis": {
+            "gridcolor": "rgb(232,232,232)",
+            "linecolor": "rgb(36,36,36)",
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside"
+           }
+          },
+          "title": {
+           "x": 0.05
+          },
+          "xaxis": {
+           "automargin": true,
+           "gridcolor": "rgb(232,232,232)",
+           "linecolor": "rgb(36,36,36)",
+           "showgrid": false,
+           "showline": true,
+           "ticks": "outside",
+           "title": {
+            "standoff": 15
+           },
+           "zeroline": false,
+           "zerolinecolor": "rgb(36,36,36)"
+          },
+          "yaxis": {
+           "automargin": true,
+           "gridcolor": "rgb(232,232,232)",
+           "linecolor": "rgb(36,36,36)",
+           "showgrid": false,
+           "showline": true,
+           "ticks": "outside",
+           "title": {
+            "standoff": 15
+           },
+           "zeroline": false,
+           "zerolinecolor": "rgb(36,36,36)"
+          }
+         }
+        },
+        "xaxis": {
+         "anchor": "y",
+         "domain": [
+          0,
+          1
+         ],
+         "title": {
+          "text": "Epoch"
+         }
+        },
+        "yaxis": {
+         "anchor": "x",
+         "domain": [
+          0,
+          1
+         ],
+         "title": {
+          "text": "Loss"
+         }
+        }
+       }
+      }
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "first_answer = f\"(1) The final test accuracy was {history_lstm.test_acc[-1]*100:.2f}%.\"\n",
+    "display(Markdown(first_answer))\n",
+    "\n",
+    "plot_lines = {\"lstm_train_loss\": history_lstm.train_loss, \"rnn_train_loss\": history_rnn.train_loss}\n",
+    "\n",
+    "plot = px.line(plot_lines, x=torch.arange(1,6), y=[\"lstm_train_loss\", \"rnn_train_loss\"], labels={\"value\": \"Loss\", \"x\": \"Epoch\"})\n",
+    "second_answer = \"(2) See plot below\"\n",
+    "display(Markdown(second_answer))\n",
+    "\n",
+    "third_answer = \"\"\"(3) The LSTM trains faster. The LSTM cell state creates a more direct pathway for information and gradients to flow across many time steps. In a simple RNN, gradients must repeatedly pass through recurrent weight matrices, making them more likely to vanish. In an LSTM, the forget gate can preserve relevant memory by keeping the cell state largely unchanged, allowing earlier sentiment cues to influence later predictions more effectively and allowing the model to converge quicker.\n",
+    "\"\"\"\n",
+    "\n",
+    "display(Markdown(third_answer))\n",
+    "\n",
+    "plot.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "151dd83f",
+   "metadata": {},
+   "source": [
+    "## PART 3. Bidirectional LSTM\n",
+    "\n",
+    "A unidirectional LSTM only reads text left-to-right. A Bidirectional LSTM (BRNN) runs two LSTMs in parallel — one forward, one backward — and concatenates their hidden states. This gives every token access to both its past and its future context."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "3f768b13",
+   "metadata": {},
+   "source": [
+    "Note: Because the two directions are concatenated, the final hidden dimension is 2 × hidden_dim. Adjust your classifier head accordingly."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "09a7ab16",
+   "metadata": {},
+   "source": [
+    "Only two changes from <span style=\"font-family: 'JetBrians';\"> LSTMClassifier:</span> \n",
+    "add <span style=\"font-family: 'JetBrians';\"> bidirectional=True</span>  to <span style=\"font-family: 'JetBrians';\"> nn.LSTM</span>, and double the input size of <span style=\"font-family: 'JetBrians';\"> nn.Linear</span>."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "fe7201d8-e53e-4016-b81e-97a9ae03c4a8",
+   "metadata": {},
+   "source": [
+    "### TASK 3.1. DEFINE BRNN (B-LSTM)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "id": "08ea4327",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "BRNNClassifier(\n",
+      "  (embedding): Embedding(20002, 128)\n",
+      "  (lstm): LSTM(128, 256, num_layers=2, batch_first=True, dropout=0.5, bidirectional=True)\n",
+      "  (fc): Linear(in_features=512, out_features=2, bias=True)\n",
+      ")\n",
+      "Epoch 1/5 Train Loss: 0.6090 | Train Acc: 0.6651 | Test Loss: 0.5036 | Test Acc: 0.7519\n",
+      "Epoch 2/5 Train Loss: 0.4253 | Train Acc: 0.8040 | Test Loss: 0.3478 | Test Acc: 0.8499\n",
+      "Epoch 3/5 Train Loss: 0.2876 | Train Acc: 0.8787 | Test Loss: 0.3124 | Test Acc: 0.8713\n",
+      "Epoch 4/5 Train Loss: 0.2355 | Train Acc: 0.9070 | Test Loss: 0.3070 | Test Acc: 0.8726\n",
+      "Epoch 5/5 Train Loss: 0.1805 | Train Acc: 0.9329 | Test Loss: 0.3183 | Test Acc: 0.8753\n"
+     ]
+    }
+   ],
+   "source": [
+    "class BRNNClassifier(nn.Module):\n",
+    "    def __init__(self, vocab_size, embed_dim, hidden_dim, n_classes,\n",
+    "                 n_layers=2, dropout=0.5):\n",
+    "        \"\"\" Your Code\"\"\"\n",
+    "        super().__init__()\n",
+    "        self.n_layers = n_layers\n",
+    "        self.hidden_dim = hidden_dim\n",
+    "        self.embedding = nn.Embedding(vocab_size, embed_dim)\n",
+    "        self.lstm = nn.LSTM(embed_dim, hidden_dim, batch_first=True, num_layers=n_layers, dropout=dropout, bidirectional=True)\n",
+    "        self.fc = nn.Linear(in_features=hidden_dim * 2, out_features=n_classes)\n",
+    "\n",
+    "    def forward(self, x, lengths):\n",
+    "        \"\"\" Your Code\"\"\"\n",
+    "        embeddings = self.embedding(x)\n",
+    "        # o (batch, L, hidden_dim * 2)\n",
+    "        o, (_, _) = self.lstm(embeddings) # last dim of O is concatenation of forward and backward pass outputs\n",
+    "        batch_size = x.size(0)\n",
+    "        forward_last_outputs = o[torch.arange(batch_size), lengths - 1, :self.hidden_dim] # (batch, hidden_dim)\n",
+    "        backward_last_outputs = o[torch.arange(batch_size), 0, self.hidden_dim:] # (batch, hidden_dim)\n",
+    "        actual_last_outputs = torch.cat([forward_last_outputs, backward_last_outputs], dim=1) # (batch, hidden_dim*2)\n",
+    "        return self.fc(actual_last_outputs)\n",
+    "\n",
+    "    # I considered using pack padded sequence here because it makes the code significantly simpler but felt that in order to make the model comparison fair at the end of the document I shouldn't use it here.\n",
+    "    # def forward(self, x, lengths):\n",
+    "    #     embeddings = self.embedding(x)\n",
+    "\n",
+    "    #     packed = nn.utils.rnn.pack_padded_sequence(\n",
+    "    #         embeddings,\n",
+    "    #         lengths.cpu(),\n",
+    "    #         batch_first=True,\n",
+    "    #         enforce_sorted=False,\n",
+    "    #     )\n",
+    "\n",
+    "    #     o, (h_n, _) = self.lstm(packed)\n",
+    "\n",
+    "    #     # h_n shape: (num_layers*2, batch, hidden_dim)\n",
+    "    #     forward_last = h_n[-2] # (batch, hidden_dim)\n",
+    "    #     backward_last = h_n[-1] # (batch, hidden_dim)\n",
+    "\n",
+    "    #     actual_last_outputs = torch.cat([forward_last, backward_last], dim=1)\n",
+    "\n",
+    "    #     return self.fc(actual_last_outputs)\n",
+    "\n",
+    "model_brnn = BRNNClassifier(\n",
+    "    vocab_size = len(vocab),\n",
+    "    embed_dim  = 128,\n",
+    "    hidden_dim = 256,\n",
+    "    n_classes  = 2,\n",
+    "    n_layers   = 2\n",
+    ")\n",
+    "\n",
+    "print(model_brnn)\n",
+    "\n",
+    "train_brnn = ModelTrainStats(\n",
+    "    name=\"BRNN\",\n",
+    "    model=model_brnn\n",
+    ")\n",
+    "models.add(train_brnn)\n",
+    "\n",
+    "history_brnn = run_training(train_brnn, train_loader, test_loader)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "5b048b94",
+   "metadata": {},
+   "source": [
+    "### TASK 3.2. TRAIN THE BRNN\n",
+    "\n",
+    "Re-use your training loop from Part 1 to train model_brnn for 5 epochs with the same hyperparameters.\n",
+    "\n",
+    "***REQUIREMENTS***\n",
+    "\n",
+    "(1). Report final test accuracy.\n",
+    "\n",
+    "(2). On the same plot, show training loss curves for the RNN, the LSTM and the BRNN. Label each line clearly.\n",
+    "\n",
+    "(3). Which model trains faster (loss drops quicker)? Why might that be?"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "id": "87e0be92",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/markdown": [
+       "(1) The final test accuracy was 87.53%."
+      ],
+      "text/plain": [
+       "<IPython.core.display.Markdown object>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "data": {
+      "text/markdown": [
+       "(2) See plot below"
+      ],
+      "text/plain": [
+       "<IPython.core.display.Markdown object>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "data": {
+      "text/markdown": [
+       "(3) The BRNN trains faster. The BRNN is architecturally simpler (less complex gating architecture) than the LSTM and therefore may be quicker to converge. For the training set, sentiment classification may largely depend on local lexical cues (\"great\" vs \"horrible\") without any dependence on long-range dependencies meaning the LSTM's extra memory machinery may not provide much early benefit. Bidirectionality can also help because information is processed from both the start and end of the sequence, meaning some sentiment cues have a shorter path to the final representation. The FC layer of the BRNN is also twice the size of the LSTM which may aid convergence.\n"
+      ],
+      "text/plain": [
+       "<IPython.core.display.Markdown object>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "data": {
+      "application/vnd.plotly.v1+json": {
+       "config": {
+        "plotlyServerURL": "https://plot.ly"
+       },
+       "data": [
+        {
+         "hovertemplate": "variable=lstm_train_loss<br>Epoch=%{x}<br>Loss=%{y}<extra></extra>",
+         "legendgroup": "lstm_train_loss",
+         "line": {
+          "color": "#1F77B4",
+          "dash": "solid"
+         },
+         "marker": {
+          "symbol": "circle"
+         },
+         "mode": "lines",
+         "name": "lstm_train_loss",
+         "orientation": "v",
+         "showlegend": true,
+         "type": "scatter",
+         "x": {
+          "bdata": "AQIDBAU=",
+          "dtype": "i1"
+         },
+         "xaxis": "x",
+         "y": {
+          "bdata": "brHHyUMV5D8leUF0ZyDiPzS/RBGVCtk/SSccuwsB0z9iWP+mFErOPw==",
+          "dtype": "f8"
+         },
+         "yaxis": "y"
+        },
+        {
+         "hovertemplate": "variable=rnn_train_loss<br>Epoch=%{x}<br>Loss=%{y}<extra></extra>",
+         "legendgroup": "rnn_train_loss",
+         "line": {
+          "color": "#FF7F0E",
+          "dash": "solid"
+         },
+         "marker": {
+          "symbol": "circle"
+         },
+         "mode": "lines",
+         "name": "rnn_train_loss",
+         "orientation": "v",
+         "showlegend": true,
+         "type": "scatter",
+         "x": {
+          "bdata": "AQIDBAU=",
+          "dtype": "i1"
+         },
+         "xaxis": "x",
+         "y": {
+          "bdata": "viBCTTEi5j+sfxsaOvDkPzQr0pnDWuQ/Fda/TfDV4z9VbR9wZyPjPw==",
+          "dtype": "f8"
+         },
+         "yaxis": "y"
+        },
+        {
+         "hovertemplate": "variable=brnn_train_loss<br>Epoch=%{x}<br>Loss=%{y}<extra></extra>",
+         "legendgroup": "brnn_train_loss",
+         "line": {
+          "color": "#2CA02C",
+          "dash": "solid"
+         },
+         "marker": {
+          "symbol": "circle"
+         },
+         "mode": "lines",
+         "name": "brnn_train_loss",
+         "orientation": "v",
+         "showlegend": true,
+         "type": "scatter",
+         "x": {
+          "bdata": "AQIDBAU=",
+          "dtype": "i1"
+         },
+         "xaxis": "x",
+         "y": {
+          "bdata": "xozPhfV84z++DX2X6jjbP3IfsP2saNI/lgR/guAlzj+VO3PoKRvHPw==",
+          "dtype": "f8"
+         },
+         "yaxis": "y"
+        }
+       ],
+       "layout": {
+        "legend": {
+         "title": {
+          "text": "variable"
+         },
+         "tracegroupgap": 0
+        },
+        "margin": {
+         "t": 60
+        },
+        "template": {
+         "data": {
+          "bar": [
+           {
+            "error_x": {
+             "color": "rgb(36,36,36)"
+            },
+            "error_y": {
+             "color": "rgb(36,36,36)"
+            },
+            "marker": {
+             "line": {
+              "color": "white",
+              "width": 0.5
+             },
+             "pattern": {
+              "fillmode": "overlay",
+              "size": 10,
+              "solidity": 0.2
+             }
+            },
+            "type": "bar"
+           }
+          ],
+          "barpolar": [
+           {
+            "marker": {
+             "line": {
+              "color": "white",
+              "width": 0.5
+             },
+             "pattern": {
+              "fillmode": "overlay",
+              "size": 10,
+              "solidity": 0.2
+             }
+            },
+            "type": "barpolar"
+           }
+          ],
+          "carpet": [
+           {
+            "aaxis": {
+             "endlinecolor": "rgb(36,36,36)",
+             "gridcolor": "white",
+             "linecolor": "white",
+             "minorgridcolor": "white",
+             "startlinecolor": "rgb(36,36,36)"
+            },
+            "baxis": {
+             "endlinecolor": "rgb(36,36,36)",
+             "gridcolor": "white",
+             "linecolor": "white",
+             "minorgridcolor": "white",
+             "startlinecolor": "rgb(36,36,36)"
+            },
+            "type": "carpet"
+           }
+          ],
+          "choropleth": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "type": "choropleth"
+           }
+          ],
+          "contour": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "colorscale": [
+             [
+              0,
+              "#440154"
+             ],
+             [
+              0.1111111111111111,
+              "#482878"
+             ],
+             [
+              0.2222222222222222,
+              "#3e4989"
+             ],
+             [
+              0.3333333333333333,
+              "#31688e"
+             ],
+             [
+              0.4444444444444444,
+              "#26828e"
+             ],
+             [
+              0.5555555555555556,
+              "#1f9e89"
+             ],
+             [
+              0.6666666666666666,
+              "#35b779"
+             ],
+             [
+              0.7777777777777778,
+              "#6ece58"
+             ],
+             [
+              0.8888888888888888,
+              "#b5de2b"
+             ],
+             [
+              1,
+              "#fde725"
+             ]
+            ],
+            "type": "contour"
+           }
+          ],
+          "contourcarpet": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "type": "contourcarpet"
+           }
+          ],
+          "heatmap": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "colorscale": [
+             [
+              0,
+              "#440154"
+             ],
+             [
+              0.1111111111111111,
+              "#482878"
+             ],
+             [
+              0.2222222222222222,
+              "#3e4989"
+             ],
+             [
+              0.3333333333333333,
+              "#31688e"
+             ],
+             [
+              0.4444444444444444,
+              "#26828e"
+             ],
+             [
+              0.5555555555555556,
+              "#1f9e89"
+             ],
+             [
+              0.6666666666666666,
+              "#35b779"
+             ],
+             [
+              0.7777777777777778,
+              "#6ece58"
+             ],
+             [
+              0.8888888888888888,
+              "#b5de2b"
+             ],
+             [
+              1,
+              "#fde725"
+             ]
+            ],
+            "type": "heatmap"
+           }
+          ],
+          "histogram": [
+           {
+            "marker": {
+             "line": {
+              "color": "white",
+              "width": 0.6
+             }
+            },
+            "type": "histogram"
+           }
+          ],
+          "histogram2d": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "colorscale": [
+             [
+              0,
+              "#440154"
+             ],
+             [
+              0.1111111111111111,
+              "#482878"
+             ],
+             [
+              0.2222222222222222,
+              "#3e4989"
+             ],
+             [
+              0.3333333333333333,
+              "#31688e"
+             ],
+             [
+              0.4444444444444444,
+              "#26828e"
+             ],
+             [
+              0.5555555555555556,
+              "#1f9e89"
+             ],
+             [
+              0.6666666666666666,
+              "#35b779"
+             ],
+             [
+              0.7777777777777778,
+              "#6ece58"
+             ],
+             [
+              0.8888888888888888,
+              "#b5de2b"
+             ],
+             [
+              1,
+              "#fde725"
+             ]
+            ],
+            "type": "histogram2d"
+           }
+          ],
+          "histogram2dcontour": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "colorscale": [
+             [
+              0,
+              "#440154"
+             ],
+             [
+              0.1111111111111111,
+              "#482878"
+             ],
+             [
+              0.2222222222222222,
+              "#3e4989"
+             ],
+             [
+              0.3333333333333333,
+              "#31688e"
+             ],
+             [
+              0.4444444444444444,
+              "#26828e"
+             ],
+             [
+              0.5555555555555556,
+              "#1f9e89"
+             ],
+             [
+              0.6666666666666666,
+              "#35b779"
+             ],
+             [
+              0.7777777777777778,
+              "#6ece58"
+             ],
+             [
+              0.8888888888888888,
+              "#b5de2b"
+             ],
+             [
+              1,
+              "#fde725"
+             ]
+            ],
+            "type": "histogram2dcontour"
+           }
+          ],
+          "mesh3d": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "type": "mesh3d"
+           }
+          ],
+          "parcoords": [
+           {
+            "line": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "parcoords"
+           }
+          ],
+          "pie": [
+           {
+            "automargin": true,
+            "type": "pie"
+           }
+          ],
+          "scatter": [
+           {
+            "fillpattern": {
+             "fillmode": "overlay",
+             "size": 10,
+             "solidity": 0.2
+            },
+            "type": "scatter"
+           }
+          ],
+          "scatter3d": [
+           {
+            "line": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scatter3d"
+           }
+          ],
+          "scattercarpet": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scattercarpet"
+           }
+          ],
+          "scattergeo": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scattergeo"
+           }
+          ],
+          "scattergl": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scattergl"
+           }
+          ],
+          "scattermap": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scattermap"
+           }
+          ],
+          "scattermapbox": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scattermapbox"
+           }
+          ],
+          "scatterpolar": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scatterpolar"
+           }
+          ],
+          "scatterpolargl": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scatterpolargl"
+           }
+          ],
+          "scatterternary": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scatterternary"
+           }
+          ],
+          "surface": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "colorscale": [
+             [
+              0,
+              "#440154"
+             ],
+             [
+              0.1111111111111111,
+              "#482878"
+             ],
+             [
+              0.2222222222222222,
+              "#3e4989"
+             ],
+             [
+              0.3333333333333333,
+              "#31688e"
+             ],
+             [
+              0.4444444444444444,
+              "#26828e"
+             ],
+             [
+              0.5555555555555556,
+              "#1f9e89"
+             ],
+             [
+              0.6666666666666666,
+              "#35b779"
+             ],
+             [
+              0.7777777777777778,
+              "#6ece58"
+             ],
+             [
+              0.8888888888888888,
+              "#b5de2b"
+             ],
+             [
+              1,
+              "#fde725"
+             ]
+            ],
+            "type": "surface"
+           }
+          ],
+          "table": [
+           {
+            "cells": {
+             "fill": {
+              "color": "rgb(237,237,237)"
+             },
+             "line": {
+              "color": "white"
+             }
+            },
+            "header": {
+             "fill": {
+              "color": "rgb(217,217,217)"
+             },
+             "line": {
+              "color": "white"
+             }
+            },
+            "type": "table"
+           }
+          ]
+         },
+         "layout": {
+          "annotationdefaults": {
+           "arrowhead": 0,
+           "arrowwidth": 1
+          },
+          "autotypenumbers": "strict",
+          "coloraxis": {
+           "colorbar": {
+            "outlinewidth": 1,
+            "tickcolor": "rgb(36,36,36)",
+            "ticks": "outside"
+           }
+          },
+          "colorscale": {
+           "diverging": [
+            [
+             0,
+             "rgb(103,0,31)"
+            ],
+            [
+             0.1,
+             "rgb(178,24,43)"
+            ],
+            [
+             0.2,
+             "rgb(214,96,77)"
+            ],
+            [
+             0.3,
+             "rgb(244,165,130)"
+            ],
+            [
+             0.4,
+             "rgb(253,219,199)"
+            ],
+            [
+             0.5,
+             "rgb(247,247,247)"
+            ],
+            [
+             0.6,
+             "rgb(209,229,240)"
+            ],
+            [
+             0.7,
+             "rgb(146,197,222)"
+            ],
+            [
+             0.8,
+             "rgb(67,147,195)"
+            ],
+            [
+             0.9,
+             "rgb(33,102,172)"
+            ],
+            [
+             1,
+             "rgb(5,48,97)"
+            ]
+           ],
+           "sequential": [
+            [
+             0,
+             "#440154"
+            ],
+            [
+             0.1111111111111111,
+             "#482878"
+            ],
+            [
+             0.2222222222222222,
+             "#3e4989"
+            ],
+            [
+             0.3333333333333333,
+             "#31688e"
+            ],
+            [
+             0.4444444444444444,
+             "#26828e"
+            ],
+            [
+             0.5555555555555556,
+             "#1f9e89"
+            ],
+            [
+             0.6666666666666666,
+             "#35b779"
+            ],
+            [
+             0.7777777777777778,
+             "#6ece58"
+            ],
+            [
+             0.8888888888888888,
+             "#b5de2b"
+            ],
+            [
+             1,
+             "#fde725"
+            ]
+           ],
+           "sequentialminus": [
+            [
+             0,
+             "#440154"
+            ],
+            [
+             0.1111111111111111,
+             "#482878"
+            ],
+            [
+             0.2222222222222222,
+             "#3e4989"
+            ],
+            [
+             0.3333333333333333,
+             "#31688e"
+            ],
+            [
+             0.4444444444444444,
+             "#26828e"
+            ],
+            [
+             0.5555555555555556,
+             "#1f9e89"
+            ],
+            [
+             0.6666666666666666,
+             "#35b779"
+            ],
+            [
+             0.7777777777777778,
+             "#6ece58"
+            ],
+            [
+             0.8888888888888888,
+             "#b5de2b"
+            ],
+            [
+             1,
+             "#fde725"
+            ]
+           ]
+          },
+          "colorway": [
+           "#1F77B4",
+           "#FF7F0E",
+           "#2CA02C",
+           "#D62728",
+           "#9467BD",
+           "#8C564B",
+           "#E377C2",
+           "#7F7F7F",
+           "#BCBD22",
+           "#17BECF"
+          ],
+          "font": {
+           "color": "rgb(36,36,36)"
+          },
+          "geo": {
+           "bgcolor": "white",
+           "lakecolor": "white",
+           "landcolor": "white",
+           "showlakes": true,
+           "showland": true,
+           "subunitcolor": "white"
+          },
+          "hoverlabel": {
+           "align": "left"
+          },
+          "hovermode": "closest",
+          "mapbox": {
+           "style": "light"
+          },
+          "paper_bgcolor": "white",
+          "plot_bgcolor": "white",
+          "polar": {
+           "angularaxis": {
+            "gridcolor": "rgb(232,232,232)",
+            "linecolor": "rgb(36,36,36)",
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside"
+           },
+           "bgcolor": "white",
+           "radialaxis": {
+            "gridcolor": "rgb(232,232,232)",
+            "linecolor": "rgb(36,36,36)",
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside"
+           }
+          },
+          "scene": {
+           "xaxis": {
+            "backgroundcolor": "white",
+            "gridcolor": "rgb(232,232,232)",
+            "gridwidth": 2,
+            "linecolor": "rgb(36,36,36)",
+            "showbackground": true,
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside",
+            "zeroline": false,
+            "zerolinecolor": "rgb(36,36,36)"
+           },
+           "yaxis": {
+            "backgroundcolor": "white",
+            "gridcolor": "rgb(232,232,232)",
+            "gridwidth": 2,
+            "linecolor": "rgb(36,36,36)",
+            "showbackground": true,
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside",
+            "zeroline": false,
+            "zerolinecolor": "rgb(36,36,36)"
+           },
+           "zaxis": {
+            "backgroundcolor": "white",
+            "gridcolor": "rgb(232,232,232)",
+            "gridwidth": 2,
+            "linecolor": "rgb(36,36,36)",
+            "showbackground": true,
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside",
+            "zeroline": false,
+            "zerolinecolor": "rgb(36,36,36)"
+           }
+          },
+          "shapedefaults": {
+           "fillcolor": "black",
+           "line": {
+            "width": 0
+           },
+           "opacity": 0.3
+          },
+          "ternary": {
+           "aaxis": {
+            "gridcolor": "rgb(232,232,232)",
+            "linecolor": "rgb(36,36,36)",
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside"
+           },
+           "baxis": {
+            "gridcolor": "rgb(232,232,232)",
+            "linecolor": "rgb(36,36,36)",
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside"
+           },
+           "bgcolor": "white",
+           "caxis": {
+            "gridcolor": "rgb(232,232,232)",
+            "linecolor": "rgb(36,36,36)",
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside"
+           }
+          },
+          "title": {
+           "x": 0.05
+          },
+          "xaxis": {
+           "automargin": true,
+           "gridcolor": "rgb(232,232,232)",
+           "linecolor": "rgb(36,36,36)",
+           "showgrid": false,
+           "showline": true,
+           "ticks": "outside",
+           "title": {
+            "standoff": 15
+           },
+           "zeroline": false,
+           "zerolinecolor": "rgb(36,36,36)"
+          },
+          "yaxis": {
+           "automargin": true,
+           "gridcolor": "rgb(232,232,232)",
+           "linecolor": "rgb(36,36,36)",
+           "showgrid": false,
+           "showline": true,
+           "ticks": "outside",
+           "title": {
+            "standoff": 15
+           },
+           "zeroline": false,
+           "zerolinecolor": "rgb(36,36,36)"
+          }
+         }
+        },
+        "xaxis": {
+         "anchor": "y",
+         "domain": [
+          0,
+          1
+         ],
+         "title": {
+          "text": "Epoch"
+         }
+        },
+        "yaxis": {
+         "anchor": "x",
+         "domain": [
+          0,
+          1
+         ],
+         "title": {
+          "text": "Loss"
+         }
+        }
+       }
+      }
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "first_answer = f\"(1) The final test accuracy was {history_brnn.test_acc[-1]*100:.2f}%.\"\n",
+    "display(Markdown(first_answer))\n",
+    "\n",
+    "plot_lines = {\"lstm_train_loss\": history_lstm.train_loss, \"rnn_train_loss\": history_rnn.train_loss, \"brnn_train_loss\": history_brnn.train_loss}\n",
+    "\n",
+    "plot = px.line(plot_lines, x=torch.arange(1,6), y=[\"lstm_train_loss\", \"rnn_train_loss\", \"brnn_train_loss\"], labels={\"value\": \"Loss\", \"x\": \"Epoch\"})\n",
+    "second_answer = \"(2) See plot below\"\n",
+    "display(Markdown(second_answer))\n",
+    "\n",
+    "third_answer = \"\"\"(3) The BRNN trains faster. The BRNN is architecturally simpler (less complex gating architecture) than the LSTM and therefore may be quicker to converge. For the training set, sentiment classification may largely depend on local lexical cues (\"great\" vs \"horrible\") without any dependence on long-range dependencies meaning the LSTM's extra memory machinery may not provide much early benefit. Bidirectionality can also help because information is processed from both the start and end of the sequence, meaning some sentiment cues have a shorter path to the final representation. The FC layer of the BRNN is also twice the size of the LSTM which may aid convergence.\n",
+    "\"\"\"\n",
+    "display(Markdown(third_answer))\n",
+    "\n",
+    "plot.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "859a1709-b34a-4563-aa1b-a37ce4d5439c",
+   "metadata": {},
+   "source": [
+    "## PART 4. Experiments, Analysis and Report"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 19,
+   "id": "4be6775b",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/markdown": [
+       "### TASK 4.1. HEAD-TO-HEAD SUMMARY TABLE\n",
+       "\n",
+       "Fill in the following table in your notebook. All values should come from your actual runs.\n",
+       "\n",
+       "| Model| TestAccuracy | Parameters | Avg Epoch Time |\n",
+       "| --- | --- | --- | --- |\n",
+       "| Vanilla RNN | 0.64 | 2659586 | 3.01 |\n",
+       "| LSTM | 0.87 | 3482370 | 23.44 |\n",
+       "| BRNN | 0.88 | 4928770 | 42.39 |\n",
+       "\n",
+       "Write 3–4 sentences interpreting the trade-off between accuracy, model size, and training speed across the three architectures.\n",
+       "\n",
+       "Model accuracy increases with parameter count and training time. The Vanilla RNN has the lowest test accuracy at 64% with ~2.7 million parameters and an average epoch time of 3.1 seconds. The LSTM and BRNN have similarly high test accuracy of 87% and 88% respectively, however the LSTM contains only ~3.5 million parameters compared to ~4.9 million of the BRNN and has a significantly shorter training time at ~23 seconds/epoch compared to 42 seconds/epoch. While the performance of the LSTM and BRNN appear similar, the train history for the BRNN demonstrates faster and more stable convergence compared to the LSTM.\n"
+      ],
+      "text/plain": [
+       "<IPython.core.display.Markdown object>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "first_answer = f\"\"\"### TASK 4.1. HEAD-TO-HEAD SUMMARY TABLE\n",
+    "\n",
+    "Fill in the following table in your notebook. All values should come from your actual runs.\n",
+    "\n",
+    "| Model| TestAccuracy | Parameters | Avg Epoch Time |\n",
+    "| --- | --- | --- | --- |\n",
+    "{\"\\n\".join([f\"| {model.name} | {max(model.train_stats.test_acc):.2f} | {model.get_param_count() } | {model.avg_epoch_time:.2f} |\" for model in models])}\n",
+    "\n",
+    "Write 3–4 sentences interpreting the trade-off between accuracy, model size, and training speed across the three architectures.\n",
+    "\n",
+    "Model accuracy increases with parameter count and training time. The Vanilla RNN has the lowest test accuracy at 64% with ~2.7 million parameters and an average epoch time of 3.1 seconds. The LSTM and BRNN have similarly high test accuracy of 87% and 88% respectively, however the LSTM contains only ~3.5 million parameters compared to ~4.9 million of the BRNN and has a significantly shorter training time at ~23 seconds/epoch compared to 42 seconds/epoch. While the performance of the LSTM and BRNN appear similar, the train history for the BRNN demonstrates faster and more stable convergence compared to the LSTM.\n",
+    "\"\"\"\n",
+    "display(Markdown(first_answer))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "099a3dd6",
+   "metadata": {},
+   "source": [
+    "### TASK 4.2. LIVE PREDICTION FUNCTION\n",
+    "\n",
+    "Implement predict_sentiment(text, model, vocab, device) that takes a raw English string and returns \"Positive\" or \"Negative\" along with the confidence score. Test it on at least four reviews of your own invention (two obviously positive, two ambiguous)."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "id": "3f4aad55-ac5b-4f24-9eb9-93775f7fd379",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\"This is the worst thing to happen to Cats since Dogs\": Negative\n",
+      "\"I enjoyed the first 10 minutes and last 10 minutes, but could have gone without the middle 90min\": Negative\n",
+      "\"I can't remember the last time I watched an actor fail to walk into a room convincingly\": Negative\n",
+      "\"This was a really good film\": Positive\n",
+      "\"I wish the film never ended\": Positive\n",
+      "\"MOVIE MOVIE MOVIE MOVIE\": Positive\n",
+      "\"I like oranges\": Negative\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Your Code\n",
+    "\n",
+    "device = torch.device(\"cuda\" if torch.cuda.is_available() else \"cpu\")\n",
+    "\n",
+    "# I'm using the encode function set up in section 0.2 so the provided vocab argument is unused\n",
+    "def predict_sentiment(text:str, model: nn.Module, vocab, device):\n",
+    "    # the model is set up to process batched data so we make a batch of size 1\n",
+    "    tokens = torch.tensor([encode(text)]).to(device)\n",
+    "    model.to(device)\n",
+    "    model.eval()\n",
+    "\n",
+    "    with torch.no_grad():\n",
+    "        y = model(tokens, lengths=torch.tensor([tokens.size(1)], dtype=torch.long).to(device))\n",
+    "\n",
+    "    return \"Negative\" if y.argmax(dim=1).item() == 0 else \"Positive\"\n",
+    "\n",
+    "test_cases = [\n",
+    "    \"This is the worst thing to happen to Cats since Dogs\", # obvious\n",
+    "    \"I enjoyed the first 10 minutes and last 10 minutes, but could have gone without the middle 90min\", # obvious\n",
+    "    \"I can't remember the last time I watched an actor fail to walk into a room convincingly\", # obvious\n",
+    "    \"This was a really good film\", # obvious\n",
+    "    \"I wish the film never ended\", # obvious\n",
+    "    \"MOVIE MOVIE MOVIE MOVIE\", # ambiguous\n",
+    "    \"I like oranges\", # ambiguous\n",
+    "]\n",
+    "\n",
+    "for i in test_cases:\n",
+    "    print(f\"\\\"{i}\\\": {predict_sentiment(i, model_brnn, vocab, device)}\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "f96e608b",
+   "metadata": {},
+   "source": [
+    "### TASK 4.3. ERROR ANALYSIS\n",
+    "\n",
+    "Find 5 misclassified examples from the test set using your best model. For each, print the first 100 tokens of the review, the true label, and the predicted label.\n",
+    "\n",
+    "Identify at least two patterns that explain the errors. Common culprits: sarcasm, negation (\"not bad\"), domain-specific words, very long reviews."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "id": "ea444c1b",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# This cell automatically finds the first 5 misclassified examples from the test set\n",
+    "# It uses the provided test_loader. It should be noted however that the test_loader does not randomise\n",
+    "# the order and therefore the first 12500 are all examples whose label is negative.\n",
+    "\n",
+    "inv_vocab = {v: k for k, v in vocab.items()}\n",
+    "\n",
+    "def decode(text):\n",
+    "    out = \"\"\n",
+    "    for i in text:\n",
+    "        out += inv_vocab.get(i.item(), \"\") + \" \"\n",
+    "    return out\n",
+    "        \n",
+    "def find_misclassifications(model: nn.Module, loader, device):\n",
+    "    counter = 0\n",
+    "    for texts, labels, lengths in test_loader:\n",
+    "        texts, labels, lengths = texts.to(device), labels.to(device), lengths.to(device)\n",
+    "\n",
+    "        y_hat = model(texts, lengths)\n",
+    "        _, pred = y_hat.max(axis=1)\n",
+    "        incorrect_indices = (pred != labels).nonzero()\n",
+    "\n",
+    "        for i in incorrect_indices:\n",
+    "            text = decode(texts[i, torch.arange(0, 100)])\n",
+    "            classification = \"Negative\" if pred[i].item() == 0 else \"Positive\"\n",
+    "            display(Markdown(f\"Misclassified example #{counter+1}. Incorrectly labelled as {classification} \\n> `{text}`\"))\n",
+    "\n",
+    "            counter += 1\n",
+    "            if counter == 5: break\n",
+    "        if counter == 5: break\n",
+    "\n",
+    "# I answered the question using the outputs from a brnn model I trained before I had fixed the PyTorch seed. I have copied the example outputs that I used into the markdown cell below.\n",
+    "# find_misclassifications(model_brnn, test_loader, device)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "333d2f74",
+   "metadata": {},
+   "source": [
+    "Misclassified example #1. Incorrectly labelled as Positive \n",
+    "> `worth the entertainment value of a rental especially if you like action movies this one features the usual car chases fights with the great van damme kick style shooting battles with the shell load shotgun and even terrorist style bombs all of this is entertaining and competently handled but there is nothing that really blows you away if you've seen your share before br br the plot is made interesting by the inclusion of a rabbit which is clever but hardly profound many of the characters are heavily stereotyped the angry veterans the terrified illegal aliens the crooked cops the`\n",
+    "\n",
+    "\n",
+    "Misclassified example #2. Incorrectly labelled as Positive \n",
+    "> `first off let me say if you haven't enjoyed a van damme movie since <unk> you probably will not like this movie most of these movies may not have the best plots or best actors but i enjoy these kinds of movies for what they are this movie is much better than any of the movies the other action guys segal and dolph have thought about putting out the past few years van damme is good in the movie the movie is only worth watching to van damme fans it is not as good as wake of death which i`\n",
+    "\n",
+    "Misclassified example #3. Incorrectly labelled as Positive \n",
+    "> `the forgotten aka don't look in the basement is a very cheaply made and very old looking horror movie br br the story is very slow and never really reaches anything worth getting excited about br br the patients at the asylum are embarrassingly funny especially sam and the old woman who always quotes an old saying to everyone look out for the bit when she gets close to the camera tell me you can watch without laughing br br now the gore is very poor looking with the blood looking pink in many scenes so it doesn't really deserve`\n",
+    "\n",
+    "Misclassified example #4. Incorrectly labelled as Positive \n",
+    "> `four things intrigued me as to this film firstly it stars <unk> pope of popular fame who is always a pleasure to watch <unk> it features brilliant new zealand actress <unk> owen thirdly it is filmed in association with the new zealand film commission <unk> a friend recommended it to me however i was utterly disappointed the whole storyline is absurd and complicated with very little resolution <unk> acting is fine but owen is unfortunately under used the other actors and actresses are all okay but i am unfamiliar with them all aside from the nice <unk> which are <unk>`\n",
+    "\n",
+    "Misclassified example #5. Incorrectly labelled as Positive \n",
+    "> `br br never ever take a film just for its good looking title br br although it all starts well the film suffers the same imperfections you see in b films its like at a certain moment the writer does not any more how to end the film so he ends it in a way nobody suspects it thinking this way he is ingenious br br a film to be listed on top of the garbage list br br <pad> <pad> <pad> <pad> <pad> <pad> <pad> <pad> <pad> <pad> <pad> <pad> <pad> <pad> <pad> <pad> <pad> <pad> <pad> <pad> <pad>`\n",
+    "\n",
+    "---\n",
+    "\n",
+    "**Identifying patterns to explain misclassifications**\n",
+    "\n",
+    "1. Poor understanding of how a film may be good by the standards of its genre, but poor overall.\n",
+    "\n",
+    "    Example #1 describes the film as a worthwhile rental for the \"car chase fights\" class of film but later describes the film as overall not something that \"blows you away.\"\n",
+    "\n",
+    "    Example #2 describes positive elements to the film such as \"enjoy these kinds of movies\" and \"much better than any of the movies the other action guys\" but overall says that \"if you haven't enjoyed a van damme movie since you probably will not like this movie.\"\n",
+    "\n",
+    "2. Lexical bias.\n",
+    "\n",
+    "    Both example #1 and #2 involve \"van damme\" as tokens. It is possible that there may have been a large number of positive reviews of the \"van damme\" film and the model has just learnt to associate a review with \"van damme\" as a positive review.\n",
+    "\n",
+    "3. Poor identification of what is being described as good / bad.\n",
+    "\n",
+    "    Example #4 states the film \"stars pope of popular fame\" and \"features brilliant new zealand actress owen\" and \"a friend recommended it to me\" which are all positive descriptions, but aren't descriptions of the film itself. These positive sentiments likely pushed the model to view the review as positive when it should be negative.\n",
+    "\n",
+    "    Example #5 describes the film's title as good looking and that the film \"starts well\" and how the writer's think they are \"ingenius\" while the film itself is negatively reviewed."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "f98057bf",
+   "metadata": {},
+   "source": [
+    "***Hint:*** Iterate over test_loader, collect predictions, and compare to true labels. You can use torch.where(preds != labels) to find mismatches."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "0d2e6391",
+   "metadata": {},
+   "source": [
+    "***Note:*** Code quality matters. Use clear variable names and add a comment to every non-obvious line. Submissions with no comments will lose up to 10 points."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "84ddc431",
+   "metadata": {},
+   "source": [
+    "***TIPS***\n",
+    "\n",
+    "***Gradient clipping***: Add torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0) before optimizer.step() to stabilise RNN training.\n",
+    "\n",
+    "***Device consistency***: If you get a device mismatch error, ensure both model and data tensors are on the same device.\n",
+    "\n",
+    "***Hidden state shape***: For a 2-layer bidirectional LSTM, hidden has shape (4, batch, hidden_dim) — 2 layers × 2 directions. Indices -2 and -1 are the last layer's forward and backward states.\n",
+    "\n",
+    "***Reproducibility***: Set seeds at the top of your notebook: torch.manual_seed(42), import random; random.seed(42).\n",
+    "\n",
+    "***Slow training?*** You can train on a 5 000-sample subset first to verify your code runs, then use the full dataset for final results."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "d187aef2",
+   "metadata": {},
+   "source": [
+    "### Task 4.4. Report\n",
+    "\n",
+    "You should write a report for the above tasks. You might wish to include a few necessary screenshots in the report.\n",
+    "\n",
+    "The file for the document must be in one of the two formats: Microsoft Word (.doc/.docx), or Adobe PDF (.pdf).\n",
+    "\n",
+    "Your report should be no more than 2 pages. In case you do need more pages, there is no penalty. But basic criteria of scientific writing should be followed.\n",
+    "\n",
+    "a. Softwaredesign: a brief description of the software and your code. \n",
+    "\n",
+    "b. The test results and diagrams (tables/curves).\n",
+    "\n",
+    "c. Discuss the results, include any observations or insights you gained from running tests.\n",
+    "\n",
+    "d. Your feedback on the assginment (optional)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "id": "f034c312",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "application/vnd.plotly.v1+json": {
+       "config": {
+        "plotlyServerURL": "https://plot.ly"
+       },
+       "data": [
+        {
+         "hovertemplate": "variable=lstm_train_loss<br>Epoch=%{x}<br>Loss=%{y}<extra></extra>",
+         "legendgroup": "lstm_train_loss",
+         "line": {
+          "color": "#1F77B4",
+          "dash": "solid"
+         },
+         "marker": {
+          "symbol": "circle"
+         },
+         "mode": "lines",
+         "name": "lstm_train_loss",
+         "orientation": "v",
+         "showlegend": true,
+         "type": "scatter",
+         "x": {
+          "bdata": "AQIDBAU=",
+          "dtype": "i1"
+         },
+         "xaxis": "x",
+         "y": {
+          "bdata": "brHHyUMV5D8leUF0ZyDiPzS/RBGVCtk/SSccuwsB0z9iWP+mFErOPw==",
+          "dtype": "f8"
+         },
+         "yaxis": "y"
+        },
+        {
+         "hovertemplate": "variable=rnn_train_loss<br>Epoch=%{x}<br>Loss=%{y}<extra></extra>",
+         "legendgroup": "rnn_train_loss",
+         "line": {
+          "color": "#FF7F0E",
+          "dash": "solid"
+         },
+         "marker": {
+          "symbol": "circle"
+         },
+         "mode": "lines",
+         "name": "rnn_train_loss",
+         "orientation": "v",
+         "showlegend": true,
+         "type": "scatter",
+         "x": {
+          "bdata": "AQIDBAU=",
+          "dtype": "i1"
+         },
+         "xaxis": "x",
+         "y": {
+          "bdata": "viBCTTEi5j+sfxsaOvDkPzQr0pnDWuQ/Fda/TfDV4z9VbR9wZyPjPw==",
+          "dtype": "f8"
+         },
+         "yaxis": "y"
+        },
+        {
+         "hovertemplate": "variable=brnn_train_loss<br>Epoch=%{x}<br>Loss=%{y}<extra></extra>",
+         "legendgroup": "brnn_train_loss",
+         "line": {
+          "color": "#2CA02C",
+          "dash": "solid"
+         },
+         "marker": {
+          "symbol": "circle"
+         },
+         "mode": "lines",
+         "name": "brnn_train_loss",
+         "orientation": "v",
+         "showlegend": true,
+         "type": "scatter",
+         "x": {
+          "bdata": "AQIDBAU=",
+          "dtype": "i1"
+         },
+         "xaxis": "x",
+         "y": {
+          "bdata": "xozPhfV84z++DX2X6jjbP3IfsP2saNI/lgR/guAlzj+VO3PoKRvHPw==",
+          "dtype": "f8"
+         },
+         "yaxis": "y"
+        }
+       ],
+       "layout": {
+        "height": 600,
+        "legend": {
+         "title": {
+          "text": ""
+         },
+         "tracegroupgap": 0
+        },
+        "template": {
+         "data": {
+          "bar": [
+           {
+            "error_x": {
+             "color": "rgb(36,36,36)"
+            },
+            "error_y": {
+             "color": "rgb(36,36,36)"
+            },
+            "marker": {
+             "line": {
+              "color": "white",
+              "width": 0.5
+             },
+             "pattern": {
+              "fillmode": "overlay",
+              "size": 10,
+              "solidity": 0.2
+             }
+            },
+            "type": "bar"
+           }
+          ],
+          "barpolar": [
+           {
+            "marker": {
+             "line": {
+              "color": "white",
+              "width": 0.5
+             },
+             "pattern": {
+              "fillmode": "overlay",
+              "size": 10,
+              "solidity": 0.2
+             }
+            },
+            "type": "barpolar"
+           }
+          ],
+          "carpet": [
+           {
+            "aaxis": {
+             "endlinecolor": "rgb(36,36,36)",
+             "gridcolor": "white",
+             "linecolor": "white",
+             "minorgridcolor": "white",
+             "startlinecolor": "rgb(36,36,36)"
+            },
+            "baxis": {
+             "endlinecolor": "rgb(36,36,36)",
+             "gridcolor": "white",
+             "linecolor": "white",
+             "minorgridcolor": "white",
+             "startlinecolor": "rgb(36,36,36)"
+            },
+            "type": "carpet"
+           }
+          ],
+          "choropleth": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "type": "choropleth"
+           }
+          ],
+          "contour": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "colorscale": [
+             [
+              0,
+              "#440154"
+             ],
+             [
+              0.1111111111111111,
+              "#482878"
+             ],
+             [
+              0.2222222222222222,
+              "#3e4989"
+             ],
+             [
+              0.3333333333333333,
+              "#31688e"
+             ],
+             [
+              0.4444444444444444,
+              "#26828e"
+             ],
+             [
+              0.5555555555555556,
+              "#1f9e89"
+             ],
+             [
+              0.6666666666666666,
+              "#35b779"
+             ],
+             [
+              0.7777777777777778,
+              "#6ece58"
+             ],
+             [
+              0.8888888888888888,
+              "#b5de2b"
+             ],
+             [
+              1,
+              "#fde725"
+             ]
+            ],
+            "type": "contour"
+           }
+          ],
+          "contourcarpet": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "type": "contourcarpet"
+           }
+          ],
+          "heatmap": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "colorscale": [
+             [
+              0,
+              "#440154"
+             ],
+             [
+              0.1111111111111111,
+              "#482878"
+             ],
+             [
+              0.2222222222222222,
+              "#3e4989"
+             ],
+             [
+              0.3333333333333333,
+              "#31688e"
+             ],
+             [
+              0.4444444444444444,
+              "#26828e"
+             ],
+             [
+              0.5555555555555556,
+              "#1f9e89"
+             ],
+             [
+              0.6666666666666666,
+              "#35b779"
+             ],
+             [
+              0.7777777777777778,
+              "#6ece58"
+             ],
+             [
+              0.8888888888888888,
+              "#b5de2b"
+             ],
+             [
+              1,
+              "#fde725"
+             ]
+            ],
+            "type": "heatmap"
+           }
+          ],
+          "histogram": [
+           {
+            "marker": {
+             "line": {
+              "color": "white",
+              "width": 0.6
+             }
+            },
+            "type": "histogram"
+           }
+          ],
+          "histogram2d": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "colorscale": [
+             [
+              0,
+              "#440154"
+             ],
+             [
+              0.1111111111111111,
+              "#482878"
+             ],
+             [
+              0.2222222222222222,
+              "#3e4989"
+             ],
+             [
+              0.3333333333333333,
+              "#31688e"
+             ],
+             [
+              0.4444444444444444,
+              "#26828e"
+             ],
+             [
+              0.5555555555555556,
+              "#1f9e89"
+             ],
+             [
+              0.6666666666666666,
+              "#35b779"
+             ],
+             [
+              0.7777777777777778,
+              "#6ece58"
+             ],
+             [
+              0.8888888888888888,
+              "#b5de2b"
+             ],
+             [
+              1,
+              "#fde725"
+             ]
+            ],
+            "type": "histogram2d"
+           }
+          ],
+          "histogram2dcontour": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "colorscale": [
+             [
+              0,
+              "#440154"
+             ],
+             [
+              0.1111111111111111,
+              "#482878"
+             ],
+             [
+              0.2222222222222222,
+              "#3e4989"
+             ],
+             [
+              0.3333333333333333,
+              "#31688e"
+             ],
+             [
+              0.4444444444444444,
+              "#26828e"
+             ],
+             [
+              0.5555555555555556,
+              "#1f9e89"
+             ],
+             [
+              0.6666666666666666,
+              "#35b779"
+             ],
+             [
+              0.7777777777777778,
+              "#6ece58"
+             ],
+             [
+              0.8888888888888888,
+              "#b5de2b"
+             ],
+             [
+              1,
+              "#fde725"
+             ]
+            ],
+            "type": "histogram2dcontour"
+           }
+          ],
+          "mesh3d": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "type": "mesh3d"
+           }
+          ],
+          "parcoords": [
+           {
+            "line": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "parcoords"
+           }
+          ],
+          "pie": [
+           {
+            "automargin": true,
+            "type": "pie"
+           }
+          ],
+          "scatter": [
+           {
+            "fillpattern": {
+             "fillmode": "overlay",
+             "size": 10,
+             "solidity": 0.2
+            },
+            "type": "scatter"
+           }
+          ],
+          "scatter3d": [
+           {
+            "line": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scatter3d"
+           }
+          ],
+          "scattercarpet": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scattercarpet"
+           }
+          ],
+          "scattergeo": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scattergeo"
+           }
+          ],
+          "scattergl": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scattergl"
+           }
+          ],
+          "scattermap": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scattermap"
+           }
+          ],
+          "scattermapbox": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scattermapbox"
+           }
+          ],
+          "scatterpolar": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scatterpolar"
+           }
+          ],
+          "scatterpolargl": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scatterpolargl"
+           }
+          ],
+          "scatterternary": [
+           {
+            "marker": {
+             "colorbar": {
+              "outlinewidth": 1,
+              "tickcolor": "rgb(36,36,36)",
+              "ticks": "outside"
+             }
+            },
+            "type": "scatterternary"
+           }
+          ],
+          "surface": [
+           {
+            "colorbar": {
+             "outlinewidth": 1,
+             "tickcolor": "rgb(36,36,36)",
+             "ticks": "outside"
+            },
+            "colorscale": [
+             [
+              0,
+              "#440154"
+             ],
+             [
+              0.1111111111111111,
+              "#482878"
+             ],
+             [
+              0.2222222222222222,
+              "#3e4989"
+             ],
+             [
+              0.3333333333333333,
+              "#31688e"
+             ],
+             [
+              0.4444444444444444,
+              "#26828e"
+             ],
+             [
+              0.5555555555555556,
+              "#1f9e89"
+             ],
+             [
+              0.6666666666666666,
+              "#35b779"
+             ],
+             [
+              0.7777777777777778,
+              "#6ece58"
+             ],
+             [
+              0.8888888888888888,
+              "#b5de2b"
+             ],
+             [
+              1,
+              "#fde725"
+             ]
+            ],
+            "type": "surface"
+           }
+          ],
+          "table": [
+           {
+            "cells": {
+             "fill": {
+              "color": "rgb(237,237,237)"
+             },
+             "line": {
+              "color": "white"
+             }
+            },
+            "header": {
+             "fill": {
+              "color": "rgb(217,217,217)"
+             },
+             "line": {
+              "color": "white"
+             }
+            },
+            "type": "table"
+           }
+          ]
+         },
+         "layout": {
+          "annotationdefaults": {
+           "arrowhead": 0,
+           "arrowwidth": 1
+          },
+          "autotypenumbers": "strict",
+          "coloraxis": {
+           "colorbar": {
+            "outlinewidth": 1,
+            "tickcolor": "rgb(36,36,36)",
+            "ticks": "outside"
+           }
+          },
+          "colorscale": {
+           "diverging": [
+            [
+             0,
+             "rgb(103,0,31)"
+            ],
+            [
+             0.1,
+             "rgb(178,24,43)"
+            ],
+            [
+             0.2,
+             "rgb(214,96,77)"
+            ],
+            [
+             0.3,
+             "rgb(244,165,130)"
+            ],
+            [
+             0.4,
+             "rgb(253,219,199)"
+            ],
+            [
+             0.5,
+             "rgb(247,247,247)"
+            ],
+            [
+             0.6,
+             "rgb(209,229,240)"
+            ],
+            [
+             0.7,
+             "rgb(146,197,222)"
+            ],
+            [
+             0.8,
+             "rgb(67,147,195)"
+            ],
+            [
+             0.9,
+             "rgb(33,102,172)"
+            ],
+            [
+             1,
+             "rgb(5,48,97)"
+            ]
+           ],
+           "sequential": [
+            [
+             0,
+             "#440154"
+            ],
+            [
+             0.1111111111111111,
+             "#482878"
+            ],
+            [
+             0.2222222222222222,
+             "#3e4989"
+            ],
+            [
+             0.3333333333333333,
+             "#31688e"
+            ],
+            [
+             0.4444444444444444,
+             "#26828e"
+            ],
+            [
+             0.5555555555555556,
+             "#1f9e89"
+            ],
+            [
+             0.6666666666666666,
+             "#35b779"
+            ],
+            [
+             0.7777777777777778,
+             "#6ece58"
+            ],
+            [
+             0.8888888888888888,
+             "#b5de2b"
+            ],
+            [
+             1,
+             "#fde725"
+            ]
+           ],
+           "sequentialminus": [
+            [
+             0,
+             "#440154"
+            ],
+            [
+             0.1111111111111111,
+             "#482878"
+            ],
+            [
+             0.2222222222222222,
+             "#3e4989"
+            ],
+            [
+             0.3333333333333333,
+             "#31688e"
+            ],
+            [
+             0.4444444444444444,
+             "#26828e"
+            ],
+            [
+             0.5555555555555556,
+             "#1f9e89"
+            ],
+            [
+             0.6666666666666666,
+             "#35b779"
+            ],
+            [
+             0.7777777777777778,
+             "#6ece58"
+            ],
+            [
+             0.8888888888888888,
+             "#b5de2b"
+            ],
+            [
+             1,
+             "#fde725"
+            ]
+           ]
+          },
+          "colorway": [
+           "#1F77B4",
+           "#FF7F0E",
+           "#2CA02C",
+           "#D62728",
+           "#9467BD",
+           "#8C564B",
+           "#E377C2",
+           "#7F7F7F",
+           "#BCBD22",
+           "#17BECF"
+          ],
+          "font": {
+           "color": "rgb(36,36,36)"
+          },
+          "geo": {
+           "bgcolor": "white",
+           "lakecolor": "white",
+           "landcolor": "white",
+           "showlakes": true,
+           "showland": true,
+           "subunitcolor": "white"
+          },
+          "hoverlabel": {
+           "align": "left"
+          },
+          "hovermode": "closest",
+          "mapbox": {
+           "style": "light"
+          },
+          "paper_bgcolor": "white",
+          "plot_bgcolor": "white",
+          "polar": {
+           "angularaxis": {
+            "gridcolor": "rgb(232,232,232)",
+            "linecolor": "rgb(36,36,36)",
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside"
+           },
+           "bgcolor": "white",
+           "radialaxis": {
+            "gridcolor": "rgb(232,232,232)",
+            "linecolor": "rgb(36,36,36)",
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside"
+           }
+          },
+          "scene": {
+           "xaxis": {
+            "backgroundcolor": "white",
+            "gridcolor": "rgb(232,232,232)",
+            "gridwidth": 2,
+            "linecolor": "rgb(36,36,36)",
+            "showbackground": true,
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside",
+            "zeroline": false,
+            "zerolinecolor": "rgb(36,36,36)"
+           },
+           "yaxis": {
+            "backgroundcolor": "white",
+            "gridcolor": "rgb(232,232,232)",
+            "gridwidth": 2,
+            "linecolor": "rgb(36,36,36)",
+            "showbackground": true,
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside",
+            "zeroline": false,
+            "zerolinecolor": "rgb(36,36,36)"
+           },
+           "zaxis": {
+            "backgroundcolor": "white",
+            "gridcolor": "rgb(232,232,232)",
+            "gridwidth": 2,
+            "linecolor": "rgb(36,36,36)",
+            "showbackground": true,
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside",
+            "zeroline": false,
+            "zerolinecolor": "rgb(36,36,36)"
+           }
+          },
+          "shapedefaults": {
+           "fillcolor": "black",
+           "line": {
+            "width": 0
+           },
+           "opacity": 0.3
+          },
+          "ternary": {
+           "aaxis": {
+            "gridcolor": "rgb(232,232,232)",
+            "linecolor": "rgb(36,36,36)",
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside"
+           },
+           "baxis": {
+            "gridcolor": "rgb(232,232,232)",
+            "linecolor": "rgb(36,36,36)",
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside"
+           },
+           "bgcolor": "white",
+           "caxis": {
+            "gridcolor": "rgb(232,232,232)",
+            "linecolor": "rgb(36,36,36)",
+            "showgrid": false,
+            "showline": true,
+            "ticks": "outside"
+           }
+          },
+          "title": {
+           "x": 0.05
+          },
+          "xaxis": {
+           "automargin": true,
+           "gridcolor": "rgb(232,232,232)",
+           "linecolor": "rgb(36,36,36)",
+           "showgrid": false,
+           "showline": true,
+           "ticks": "outside",
+           "title": {
+            "standoff": 15
+           },
+           "zeroline": false,
+           "zerolinecolor": "rgb(36,36,36)"
+          },
+          "yaxis": {
+           "automargin": true,
+           "gridcolor": "rgb(232,232,232)",
+           "linecolor": "rgb(36,36,36)",
+           "showgrid": false,
+           "showline": true,
+           "ticks": "outside",
+           "title": {
+            "standoff": 15
+           },
+           "zeroline": false,
+           "zerolinecolor": "rgb(36,36,36)"
+          }
+         }
+        },
+        "title": {
+         "text": "RNN Learning Rate Comparison",
+         "x": 0.5
+        },
+        "width": 1100,
+        "xaxis": {
+         "anchor": "y",
+         "domain": [
+          0,
+          1
+         ],
+         "title": {
+          "text": "Epoch"
+         }
+        },
+        "yaxis": {
+         "anchor": "x",
+         "domain": [
+          0,
+          1
+         ],
+         "title": {
+          "text": "Loss"
+         }
+        }
+       }
+      }
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "# Used to generate graph for the report\n",
+    "\n",
+    "plot = px.line(plot_lines, x=torch.arange(1,6), y=[\"lstm_train_loss\", \"rnn_train_loss\", \"brnn_train_loss\"], labels={\"value\": \"Loss\", \"x\": \"Epoch\"}, title=\"RNN Learning Rate Comparison\")\n",
+    "plot.update_layout(\n",
+    "    legend_title_text=\"\",\n",
+    "    title_x=0.5,\n",
+    "    width=1100,\n",
+    "    height=600\n",
+    ")\n",
+    "plot.show()"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "learning-ml",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.12.3"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
