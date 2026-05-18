@@ -57,17 +57,17 @@ $$
 Otherwise written as: ($n$ queries and $m$ key-value pairs, where queries and keys are of length $d$ and values are of length $v$)
 
 $$
-\mathrm{softmax}\left(\frac{\mathbf Q \mathbf K^\top }{\sqrt{d}}\right) \mathbf V \in \mathbb{R}^{n\times v}.
+\mathrm{softmax}\left(\frac{\mathbf Q \mathbf K^\top }{\sqrt{d}}\right) \mathbf V \in \mathbb{R}^{n\times v}
 $$
 
-### Multilayer Perception Attention (Additive Attention)
+### Multilayer Perceptron Attention (Additive Attention)
 
 Used when $q \in \mathbb R^q$ and $k \in \mathbb R^k$ are different dimensions so dot product not possible.
 
 One option is to address the mismatch with $\mathbf{q}^\top \mathbf{M} \mathbf{k}$ or alternatively we can use additive attention:
 
 $$
-a(\mathbf q, \mathbf k) = \mathbf v^\top \textrm{tanh}(\mathbf W_q\mathbf q + \mathbf W_k \mathbf k) \in \mathbb{R},
+a(\mathbf q, \mathbf k) = \mathbf v^\top \textrm{tanh}(\mathbf W_q\mathbf q + \mathbf W_k \mathbf k) \in \mathbb{R}
 $$
 
 Where $\mathbf W_q\in\mathbb R^{h\times q}$, $\mathbf W_k\in\mathbb R^{h\times k}$, $\mathbf v\in\mathbb R^{h}$.
