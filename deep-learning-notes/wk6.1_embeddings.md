@@ -1,3 +1,42 @@
+![alt text](img/attention_archs.png)
+
+# What we actually do
+
+Old setup: `word → pretrained GloVe vector → downstream model`
+
+New setup: `text → subword tokeniser → learned subword embeddings → Transformer` (used by all pre-trained models) (subword representations randomly initialised and learned in the transformer model)
+
+Tokenisation today uses subword tokenisation with tuned vocabulary (usually 50k to 250k pieces, larger for multilingual models)
+- Subword tokenisation is better able to handle rare words and new words (e.g., "unicorn" may be tokenised as "uni" + "corn")
+- More efficient than character-level tokenisation
+- (something something wordpieces are more generalisable to new text compared to words)
+
+Space handling is dependent on the tokeniser. E.g., BERT uses WordPiece tokeniser which adds a special character to indicate that a token is not at the start of a word (e.g., "unicorn" → "uni" + "##corn"). GPT uses Byte Pair Encoding (BPE), elaborated below.
+
+Random note:
+- Translation: preserve meaning
+- Transliteration: preserve sound
+
+## Byte Pair Encoding (BPE)
+
+Two styles:
+1. Treats spaces as normal characters (e.g., may get "hello world" → "hello" + " world")
+2. Split on space and add a end of word token (e.g., may get "hello world" → "hello</w>" + "world</w>")
+
+Algorithm
+1. Count all adjacent symbol pairs across the entire corpus
+2. Find the most frequent pair (e.g., l o)
+3. Merge that pair into a single new symbol (e.g., lo)
+4. Add the new symbol to the vocabulary
+5. Repeat until the vocab reaches a predefined size
+
+So overall
+- Frequent words end up as single tokens; rare words broken into subword pieces
+- Out of vocab words can be represented by falling back on smaller subword units
+- Vocab size is a hyperparameter that is set in advance (e.g., 32000)
+- Learned rules are applied determinstically at inference time to new text
+- Naturally capturs morphological structure (prefixes, suffixes e.g., un, ing, er)
+
 # Embeddings
 
 In general an LLM or RNN can learn its own embeddings. However it is possible to use pretrained word embeddings.
@@ -164,9 +203,13 @@ $$
 
 ## BERT
 
-- Encoder only transformer
+- Bidirectional Encoder Representations from Transformers
 
 Pretty much text → WordPiece tokens (subword tokeniser) → embedding lookup → encoder Tranformer
+
+How do you use the embeddings from BERT? Just the outputs:
+- `[CLS] The patient has chest pain [SEP]`
+- BERT outputs one contextual vector per token: `h_CLS, h_The, h_patient, h_has, h_chest, h_pain, h_SEP`
 
 Training paradigms:
 - Masked language modelling (MLM): randomly mask out some tokens and train the model to predict the original tokens (trained by taking an original sentence, masking out/corrupting some of the tokens, and then training the model to predict the original tokens)
@@ -190,7 +233,7 @@ Uses:
 
 1. Can capture interactions between two sentences in the classification token. E.g., does the first sentence entail/contradict/neutral the second sentence?
 
-    After BERT pretraining, you can freeze weights and train a small classifier head on top of the CLS token. Alternatively you can do the whole thing end-to-end and fine-tune the BERT weights as well.
+    After BERT pretraining, you can freeze weights and train a small classifier head on top of the `CLS token`. Alternatively you can do the whole thing end-to-end and fine-tune the BERT weights as well.
 
 2. Question answering (SQuAD)
 
@@ -212,3 +255,107 @@ Uses:
     We then have two linear layers that take in the hidden states and output a score for each token being the start or end of the answer:
     - $s_t = W_{\text{start}} h_t + b_{\text{start}}$ (score for token $t$ being the start of the answer)
     - $e_t = W_{\text{end}} h_t + b_{\text{end}}$ (score for token $t$ being the end of the answer)
+
+What it can't do:
+
+- Cannot generation text (can fill in mask tokens, cannot generate left-to-right unless putting a mask token at the end repeatedly, but this is slow)
+- Primary use is analysis tasks (classification, question answering, etc.) rather than generation tasks
+
+Fine-tuning:
+
+- Basic fine-tuning settings:
+  - 1-3 epochs, 2-32 batch size, 2e-5 to 5e-5 learning rate.
+  - Need learning rate slow enough as to not destroy pretrained knowledge (too high and this is called catastrophic forgetting)
+- Triangular learning rate
+  - Start with slow learning rate, then increase to a peak, then decrease again
+  - BERT is sensitive during fine-tuning. Bad learning rates can make performance collapse
+- "Large changes up here, smaller changes lower down"
+    ```
+    Lower layers: basic language features
+    Middle layers: syntax / phrase structure
+    Upper layers: task-specific meaning
+    Classifier head: task decision
+    ```
+    So:
+    - the classifier head changes a lot, because it is newly added
+    - the top BERT layers change moderately, because they adapt to the task
+    - the lower BERT layers change less, because basic language features are already useful
+
+## Fancy BERT MCQ
+
+![alt text](img/deng_et_al.png)
+
+Standard BERT MCQ:
+
+1. [CLS] question [SEP] choice_i [SEP]
+2. BERT
+3. CLS vector
+4. linear layer
+5. score(choice_i)
+
+Fancy BERT MCQ: (Differentiating Choices via Commonality for Multiple-Choice Question Answering)
+
+Structure:
+
+### Layer Details: Deng et al. DCQA
+
+Question: $q$  
+Choices: $a_1, a_2, \ldots, a_n$
+
+- Context Representation
+  - Encode the question alone:
+    - $Q = \operatorname{Encoder}(q)$
+    - $Q \in \mathbb{R}^{l \times d}$
+  - Encode each question-choice pair:
+    - $A_i = \operatorname{Encoder}(q + a_i)$
+    - $A_i \in \mathbb{R}^{m \times d}$
+
+- Commonality Extraction
+  - Compare every choice with every other choice.
+  - This is their **choice attention**.
+  - For choice $i$ attending to choice $j$:
+    - $S_{ij} = \operatorname{softmax}(A_i W_{ij} A_j^\top)$
+  - Use $S_{ij}$ to pull shared information from $A_j$:
+    - $S_{ij}A_j$
+  - Aggregate over all pairwise choice comparisons:
+    - $C = \frac{1}{n}\sum_i \sum_{j \ne i} S_{ij}A_j$
+  - $C$ is the commonality representation.
+  - Intuition:
+    - $C \approx$ “what the answer choices share”
+
+- Context Refinement
+  - Goal:
+    - Find which parts of the question relate to each choice.
+    - Subtract the parts that relate to commonality.
+  - Cross-attention between question and commonality:
+    - $\hat{Q}^c, q^c = \operatorname{Att}_{cross}(Q; C)$
+  - Cross-attention between question and each choice:
+    - $\hat{Q}_i^a, q_i^a = \operatorname{Att}_{cross}(Q; A_i)$
+  - Remove commonality-related question information:
+    - $\hat{Q}_i = \hat{Q}_i^a - \hat{Q}^c$
+    - $q_i = q_i^a - q^c$
+  - Intuition:
+    - refined question for choice $i$ = “question features relevant to choice $i$, minus features relevant to all choices”
+
+- Decoder
+  - Use the refined question representation to generate/activate extra contextual information:
+    - $K_i = \operatorname{Decoder}(\hat{Q}_i)$
+  - Intuition:
+    - $K_i \approx$ generated clue/context for this specific choice
+
+- Choice Enhancement
+  - Enhance the choice using both:
+    - original choice representation $A_i$
+    - generated clue/context $K_i$
+  - Concatenate:
+    - $[A_i; K_i]$
+  - Cross-attend this against the refined question:
+    - $\hat{A}_i, a_i = \operatorname{Att}_{cross}([A_i; K_i]; \hat{Q}_i)$
+
+- Scoring
+  - Combine:
+    - $q_i$ = refined question vector for choice $i$
+    - $a_i$ = enhanced choice vector for choice $i$
+  - Score:
+    - $\operatorname{score}(a_i) = \operatorname{softmax}(\operatorname{MLP}([q_i; a_i]))$
+  - Choose the answer with the highest score.

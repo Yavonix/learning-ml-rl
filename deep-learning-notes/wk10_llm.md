@@ -46,3 +46,13 @@ $$
 ## Pretraining
 
 Train model on X, fine-tune on Y.
+
+For language models, pre-training usually means learning from large text corpora using a self-supervised objective, such as:
+
+- **GPT:** predict the next token  
+  $P(x_t \mid x_{<t})$
+
+- **BERT:** predict masked tokens using surrounding context  
+  $P(x_{\text{mask}} \mid x_{\text{left}}, x_{\text{right}})$
+
+After pre-training, the model has learned general language representations. It can then be adapted to a specific task by **fine-tuning** or by adding a task-specific head.
