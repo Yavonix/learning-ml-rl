@@ -204,6 +204,7 @@ $$
 ## BERT
 
 - Bidirectional Encoder Representations from Transformers
+- Pretty much called bidirectional because the attention head is non-causal
 
 Pretty much text → WordPiece tokens (subword tokeniser) → embedding lookup → encoder Tranformer
 

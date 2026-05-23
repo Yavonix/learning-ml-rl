@@ -1,6 +1,8 @@
 ## Perplexity
 (recap from wk 6 notes)
 
+Perplexity is the exponential of cross-entropy averaged over all timesteps, so that sequences of varying timesteps are comparable
+
 We need some way of comparing loss between variable length sequences. This is defined as perplexity:
 
 Let $x_{<t} = x_1, \dots, x_{t-1}$ and $V$ be all possible tokens.
