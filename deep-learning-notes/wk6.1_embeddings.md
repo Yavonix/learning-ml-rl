@@ -262,6 +262,9 @@ What it can't do:
 - Cannot generation text (can fill in mask tokens, cannot generate left-to-right unless putting a mask token at the end repeatedly, but this is slow)
 - Primary use is analysis tasks (classification, question answering, etc.) rather than generation tasks
 
+> [!CAUTION]
+> ANKI UP TO HERE
+
 Fine-tuning:
 
 - Basic fine-tuning settings:

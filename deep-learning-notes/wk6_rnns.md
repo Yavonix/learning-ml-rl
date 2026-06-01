@@ -599,11 +599,6 @@ so the encoder context may be:
 c = (h_n, cell_n)
 ```
 
-ANKI NOTES UP TO HERE
----
----
----
-
 ## Evaluation of Predicted Sequence
 
 Analogous to "accuracy" for CNNs, Bilingual Evaluation Understudy (BLEU) is a metric for measuring output sequences quality.
@@ -635,6 +630,11 @@ $$
 $$
 
 Note since $p \in [0,1]$ then $p^{1/n} \le p^{1/2n}$
+
+ANKI NOTES UP TO HERE
+---
+---
+---
 
 ## Search Strategies
 
