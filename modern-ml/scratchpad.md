@@ -46,6 +46,7 @@ D. My money is on dimension-contrastive methods like SIGReg/LeJEPA
 
 
 [LeCun](https://x.com/ylecun/status/2007907701989232684)
+```
 I think you missed the main ideas.
 - The basic premise of JEPA is that training by reconstructio/prediction in input space is evil (or counterproductive). The details are almost always unpredictable.  Hence prediction must take place in representation space, where unpredictable details are eliminated.
 - The main issue with JEPA is how to prevent collapse (in the absence of reconstruction loss). There are two classes of methods: 
@@ -58,3 +59,4 @@ A. SSL by reconstruction/prediction doesn't work for high-dim, continuous,  nois
 B. EMA sucks: no loss function being minimized,  requirement for weightmsharing....
 C. Sample-contrastive informax doesn't scale to high dimension
 D. My money is on dimension-contrastive methods like SIGReg/LeJEPA
+```
