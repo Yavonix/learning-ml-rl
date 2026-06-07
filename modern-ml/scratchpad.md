@@ -60,3 +60,15 @@ B. EMA sucks: no loss function being minimized,  requirement for weightmsharing.
 C. Sample-contrastive informax doesn't scale to high dimension
 D. My money is on dimension-contrastive methods like SIGReg/LeJEPA
 ```
+
+
+
+
+
+
+
+
+
+
+
+
