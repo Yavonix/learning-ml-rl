@@ -29,7 +29,6 @@ Fine-Tuning is sufficient.
 - D) Kaplan found that larger models require more data to reach the same
 performance, while Chinchilla found they require less
 
-
 2. Which of the following is NOT one of the three primary steps in the InstructGPT
 Reinforcement Learning from Human Feedback (RLHF) pipeline?
 
@@ -39,7 +38,6 @@ Model (RM).
 - C) Optimising the policy against the Reward Model using the PPO algorithm.
 - **D) Utilising a high-precision programmatic grader (like a Python unit test) to assign
 a strict 1 or 0 verifiable reward.**
-
 
 3. Why is standard Supervised Fine-Tuning (SFT) sometimes challenging or insufficient on
 its own?
