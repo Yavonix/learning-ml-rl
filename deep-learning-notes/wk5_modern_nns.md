@@ -1,3 +1,15 @@
+- [Takeaways](#takeaways)
+  - [(VGG) 2 3x3 vs 1 5x5 Convolution](#vgg-2-3x3-vs-1-5x5-convolution)
+  - [(NiN)](#nin)
+  - [GoogLeNet](#googlenet)
+- [Architectures](#architectures)
+  - [LeNet](#lenet)
+  - [AlexNet](#alexnet)
+  - [VGG](#vgg)
+  - [NiN](#nin-1)
+  - [GoogLeNet](#googlenet-1)
+  - [Batch Normalisation](#batch-normalisation)
+
 # Takeaways
 
 ## (VGG) 2 3x3 vs 1 5x5 Convolution

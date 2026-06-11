@@ -1,8 +1,14 @@
-## Transformer
+- [9.1 Transformer](#91-transformer)
+  - [Overview](#overview)
+  - [Layer Details](#layer-details)
+  - [FFN](#ffn)
+
+
+# 9.1 Transformer
 
 ![alt text](img/transformer.png)
 
-### Overview
+## Overview
 
 First note that a GPT-style transformer is a decoder-only transformer:
 - Each token can attend only to previous tokens, because of the causal mask $x_t \text{ can attend to } x_1, \dots x_t$.
@@ -16,7 +22,7 @@ Note how both encoder and decoder input get position encoding.
 
 ![alt text](img/transformer_layers.png)
 
-### Layer Details
+## Layer Details
 
 Include residual connection + layer norm around each attention/FFN sublayer.
 
@@ -40,7 +46,7 @@ Include residual connection + layer norm around each attention/FFN sublayer.
 
 ![alt text](img/transformer_arch.png)
 
-### FFN
+## FFN
 
 We have (B, L, d_model). We apply a 2-layer MLP to d_model only.
 

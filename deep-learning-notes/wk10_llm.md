@@ -1,3 +1,11 @@
+- [Wk 10 LLM](#wk-10-llm)
+  - [Perplexity](#perplexity)
+  - [Definitions](#definitions)
+  - [Pretraining](#pretraining)
+
+
+# Wk 10 LLM
+
 ## Perplexity
 (recap from wk 6 notes)
 
@@ -7,14 +15,12 @@ We need some way of comparing loss between variable length sequences. This is de
 
 Let $x_{<t} = x_1, \dots, x_{t-1}$ and $V$ be all possible tokens.
 
-$$
-\text{Perplexity} = \exp\left(- \frac{1}{n} \sum_{t=1}^n \sum_{v \in V} P(v \mid x_{<t}) \cdot \ln \hat{P}(v \mid x_{<t}) \right)
+$$ \text{Perplexity} = \exp\left(- \frac{1}{n} \sum_{t=1}^n \sum_{v \in V} P(v \mid x_{<t}) \cdot \ln \hat{P}(v \mid x_{<t}) \right)
 $$
 
 Which when one-hot encoded:
 
-$$
-\text{Perplexity} = \exp\left(- \frac{1}{n} \sum_{t=1}^n\cdot \ln \hat{P}(x_t \mid x_{<t}) \right)
+$$ \text{Perplexity} = \exp\left(- \frac{1}{n} \sum_{t=1}^n\cdot \ln \hat{P}(x_t \mid x_{<t}) \right)
 $$
 
 By example, suppose:
@@ -24,9 +30,7 @@ By example, suppose:
 
 Then:
 
-$$
-\text{Perplexity}
-=
+$$ \text{Perplexity} =
 \exp\left(
 -\frac{1}{3}
 \left(

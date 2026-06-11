@@ -1,3 +1,13 @@
+- [What we actually do](#what-we-actually-do)
+  - [Byte Pair Encoding (BPE)](#byte-pair-encoding-bpe)
+- [Embeddings](#embeddings)
+  - [Word2Vec](#word2vec)
+  - [GloVe](#glove)
+  - [ELMo](#elmo)
+  - [BERT](#bert)
+  - [Fancy BERT MCQ](#fancy-bert-mcq)
+    - [Layer Details: Deng et al. DCQA](#layer-details-deng-et-al-dcqa)
+
 ![alt text](img/attention_archs.png)
 
 # What we actually do
@@ -178,9 +188,7 @@ $e_k$ will be the final embedding for the $k$-th word
 - Effectively a weighted sum of the three components
 - $\gamma^i$, $\gamma$, $f_j$, $b_j$ are learned
 
-$$
-\mathbf e_k
-=
+$$ \mathbf e_k =
 \gamma^{i}\mathbf h^{\text{init}}_k
 +
 \gamma \sum_{j=0}^{L} f_j \mathbf h^{\text{forward}}_{k,j}
@@ -190,9 +198,7 @@ $$
 
 ELMo is pretrained with a bidirectional language modelling loss, meaning the forward LSTM tries to predict the next word and the backward LSTM tries to predict the previous word, we then sum them:
 
-$$
-\mathcal L_{\text{ELMo}}
-=
+$$ \mathcal L_{\text{ELMo}} =
 -\sum_{k=1}^{N}
 \left[
 \log P(w_k \mid w_1,\dots,w_{k-1})

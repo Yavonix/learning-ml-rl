@@ -1,3 +1,38 @@
+- [Recurrent Neural Networks](#recurrent-neural-networks)
+  - [Coming From Non-Sequential Data](#coming-from-non-sequential-data)
+  - [Sequence Modelling](#sequence-modelling)
+    - [Intro](#intro)
+    - [Sequence Models](#sequence-models)
+    - [Markov Models](#markov-models)
+    - [Converting Raw Text into Sequence Data](#converting-raw-text-into-sequence-data)
+  - [Language Models](#language-models)
+    - [Markov Models](#markov-models-1)
+    - [Word Frequency](#word-frequency)
+  - [Perplexity](#perplexity)
+  - [Partitioning](#partitioning)
+  - [Shortcomings of MLP](#shortcomings-of-mlp)
+  - [Koren 2009](#koren-2009)
+  - [Problems with Markov Models / n-grams](#problems-with-markov-models--n-grams)
+  - [Training](#training)
+  - [Recurrent Neural Networks with Hidden States](#recurrent-neural-networks-with-hidden-states)
+  - [Weight matrix concatenation](#weight-matrix-concatenation)
+  - [LSTM](#lstm)
+    - [Plain](#plain)
+    - [GRU](#gru)
+  - [Deep RNN](#deep-rnn)
+  - [Bidirectional RNN](#bidirectional-rnn)
+  - [Sequence to Sequence Modelling](#sequence-to-sequence-modelling)
+    - [Encoder Decoder Architecture](#encoder-decoder-architecture)
+    - [Teacher Forcing](#teacher-forcing)
+    - [Sequence to Sequence RNN Encoder-Decoder Model](#sequence-to-sequence-rnn-encoder-decoder-model)
+    - [Multi-layer Sequence to Sequence RNN Encoder-Decoder Model](#multi-layer-sequence-to-sequence-rnn-encoder-decoder-model)
+  - [Evaluation of Predicted Sequence](#evaluation-of-predicted-sequence)
+  - [ANKI NOTES UP TO HERE](#anki-notes-up-to-here)
+  - [Search Strategies](#search-strategies)
+    - [Greedy Search](#greedy-search)
+    - [Exhaustive Search](#exhaustive-search)
+    - [Sequence Decoding Beam Search](#sequence-decoding-beam-search)
+
 Need to read ~~9.1~~, ~~9.2~~ and ~~9.3~~ again
 
 Need to go through ~~10.5~~, ~~10.6~~, ~~10.7~~, 10.8
@@ -65,9 +100,7 @@ For a window length $\tau$, we predict $x_t$ using only $x_{t-1}, \dots, x_{t-\t
 
 This is the Markov condition:
 
-$$
-P(x_t \mid x_{t-1}, \dots, x_1)
-=
+$$ P(x_t \mid x_{t-1}, \dots, x_1) =
 P(x_t \mid x_{t-1}, \dots, x_{t-\tau})
 $$
 
@@ -75,9 +108,7 @@ I.e., once we know the recent history, the older history provides no additional 
 
 If $\tau = 1$, this is a first-order Markov model. The next token only depends on the previous token:
 
-$$
-P(x_1, \dots, x_T)
-=
+$$ P(x_1, \dots, x_T) =
 P(x_1)\prod_{t=2}^{T}P(x_t \mid x_{t-1})
 $$
 
@@ -388,9 +419,7 @@ At timestep $t$, let:
 
 Then with hidden activation function $\phi$, the hidden states are:
 
-$$
-\overrightarrow{\mathbf{H}}_t
-=
+$$ \overrightarrow{\mathbf{H}}_t =
 \phi\!\left(
 \mathbf{X}_t \mathbf{W}_{\mathrm{xh}}^{(f)}
 +
@@ -400,9 +429,7 @@ $$
 \right)
 $$
 
-$$
-\overleftarrow{\mathbf{H}}_t
-=
+$$ \overleftarrow{\mathbf{H}}_t =
 \phi\!\left(
 \mathbf{X}_t \mathbf{W}_{\mathrm{xh}}^{(b)}
 +

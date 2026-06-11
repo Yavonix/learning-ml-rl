@@ -1,3 +1,34 @@
+- [Wk 11 LLM](#wk-11-llm)
+  - ["Train on the Web"](#train-on-the-web)
+    - [Data Sources](#data-sources)
+    - [Training Curriculum](#training-curriculum)
+    - [LLM Evaluation is becoming Unreliable](#llm-evaluation-is-becoming-unreliable)
+  - [Decision Making when training NNs](#decision-making-when-training-nns)
+  - [Power Law](#power-law)
+    - [Overview](#overview)
+    - [How to find optimal N and D](#how-to-find-optimal-n-and-d)
+      - [Step 1: Try different model sizes](#step-1-try-different-model-sizes)
+      - [Step 2: Determine loss using loss equation](#step-2-determine-loss-using-loss-equation)
+      - [Step 3: Repeat 1 and 2 for varying compute budgets](#step-3-repeat-1-and-2-for-varying-compute-budgets)
+  - [Takeaways from Kaplan et al. (2020)](#takeaways-from-kaplan-et-al-2020)
+  - [Chinchilla enters the room. (2022)](#chinchilla-enters-the-room-2022)
+  - [Intentional overtraining](#intentional-overtraining)
+  - [Power law diminishing returns...](#power-law-diminishing-returns)
+  - [Surprising performance from smaller models surpassing what pure scaling predicts](#surprising-performance-from-smaller-models-surpassing-what-pure-scaling-predicts)
+    - [1. Training Curriculum (copied from above)](#1-training-curriculum-copied-from-above)
+    - [2. User/Assistant Templates](#2-userassistant-templates)
+    - [3. Supervised fine-tuning (SFT) using demonstrations of desired behaviour](#3-supervised-fine-tuning-sft-using-demonstrations-of-desired-behaviour)
+      - [LIMA: Less Is More for Alignment](#lima-less-is-more-for-alignment)
+  - [Reinforcement Learning](#reinforcement-learning)
+    - [Challenges with SFT](#challenges-with-sft)
+    - [RL for Human Feedback (RLHF)](#rl-for-human-feedback-rlhf)
+    - [RL from "Verifiable" Rewards](#rl-from-verifiable-rewards)
+    - [Rejection Fine-Tuning (RFT)](#rejection-fine-tuning-rft)
+    - [Policy Gradient Algorithms (REINFORCE)](#policy-gradient-algorithms-reinforce)
+
+
+# Wk 11 LLM
+
 ## "Train on the Web"
 
 ### Data Sources
@@ -304,9 +335,7 @@ repeat:
 
 ### Policy Gradient Algorithms (REINFORCE)
 
-$$
-\nabla_\theta \mathbb{E}\left[ R(x,y) \right]
-=
+$$ \nabla_\theta \mathbb{E}\left[ R(x,y) \right] =
 \mathbb{E}\left[ R(x,y)\,\nabla_\theta \log \pi_\theta(y \mid x) \right]
 $$
 

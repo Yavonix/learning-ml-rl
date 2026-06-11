@@ -1,4 +1,20 @@
+- [Wk 9 Transformer](#wk-9-transformer)
+  - [Issues with RNN](#issues-with-rnn)
+  - [Queries Key and Values](#queries-key-and-values)
+  - [Attention Scoring Functions](#attention-scoring-functions)
+    - [Scaled Dot Production Attention](#scaled-dot-production-attention)
+    - [Multilayer Perceptron Attention (Additive Attention)](#multilayer-perceptron-attention-additive-attention)
+  - [Seq2Seq With Attention (Bahdanau Attention Mechanism)](#seq2seq-with-attention-bahdanau-attention-mechanism)
+  - [Positional Encoding](#positional-encoding)
+    - [Absolute positional information](#absolute-positional-information)
+    - [Relative positional information](#relative-positional-information)
+  - [(convenience function) Masked Softmax Operation](#convenience-function-masked-softmax-operation)
+  - [Relative positional information explanation](#relative-positional-information-explanation)
+
+# Wk 9 Transformer
+
 ## Issues with RNN
+
 (This section is just because I wanted a record of keywords from the lecture)
 
 Lack of parallelism across time steps within each sequence.
@@ -116,9 +132,7 @@ Let $\mathbf X \in \mathbb R^{n\times d}$ with $d$-dimensional embeddings for $n
 
 We then form a positional encoding matrix $\mathbf P \in \mathbb R^{n\times d}$:
 
-$$
-p_{i,k}
-=
+$$ p_{i,k} =
 \begin{cases}
 \sin\left(\dfrac{i}{10000^{k/d}}\right), & k \text{ is even} \\
 \cos\left(\dfrac{i}{10000^{(k-1)/d}}\right), & k \text{ is odd}
@@ -156,14 +170,11 @@ Later dimensions: low frequency = change slowly with position
 
 For a fixed offset $\delta$, there is a matrix $M_{\delta,j}$ such that:
 
-$$
-M_{\delta,j}
+$$ M_{\delta,j}
 \begin{bmatrix}
 p_{i,2j} \\
 p_{i,2j+1}
-\end{bmatrix}
-=
-\begin{bmatrix}
+\end{bmatrix} = \begin{bmatrix}
 p_{i+\delta,2j} \\
 p_{i+\delta,2j+1}
 \end{bmatrix}
@@ -191,9 +202,7 @@ We need to limit $\sum_{i=1}^n \alpha(\mathbf{q}, \mathbf{k}_i) \mathbf{v}_i$ to
 
 Use a 4-dimensional example:
 
-$$
-\vec v_t =
-\begin{bmatrix}
+$$ \vec v_t = \begin{bmatrix}
 \sin(t) \\
 \cos(t) \\
 \sin\left(\frac{t}{\eta_1}\right) \\
@@ -203,9 +212,7 @@ $$
 
 After shifting by a fixed offset $\delta$:
 
-$$
-\vec v_{t+\delta} =
-\begin{bmatrix}
+$$ \vec v_{t+\delta} = \begin{bmatrix}
 \sin(t+\delta) \\
 \cos(t+\delta) \\
 \sin\left(\frac{t+\delta}{\eta_1}\right) \\
@@ -225,26 +232,20 @@ $$
 
 we get:
 
-$$
-\vec v_{t+\delta}
-=
+$$ \vec v_{t+\delta} =
 \begin{bmatrix}
 \sin(t)\cos(\delta) + \cos(t)\sin(\delta) \\
 \cos(t)\cos(\delta) - \sin(t)\sin(\delta) \\
 \sin\left(\frac{t}{\eta_1}\right)\cos\left(\frac{\delta}{\eta_1}\right)
-+
-\cos\left(\frac{t}{\eta_1}\right)\sin\left(\frac{\delta}{\eta_1}\right) \\
++ \cos\left(\frac{t}{\eta_1}\right)\sin\left(\frac{\delta}{\eta_1}\right) \\
 \cos\left(\frac{t}{\eta_1}\right)\cos\left(\frac{\delta}{\eta_1}\right)
--
-\sin\left(\frac{t}{\eta_1}\right)\sin\left(\frac{\delta}{\eta_1}\right)
+- \sin\left(\frac{t}{\eta_1}\right)\sin\left(\frac{\delta}{\eta_1}\right)
 \end{bmatrix}
 $$
 
 This can be written as a matrix multiplication:
 
-$$
-\vec v_{t+\delta}
-=
+$$ \vec v_{t+\delta} =
 \begin{bmatrix}
 \cos(\delta) & \sin(\delta) & 0 & 0 \\
 -\sin(\delta) & \cos(\delta) & 0 & 0 \\
@@ -261,8 +262,7 @@ $$
 
 So:
 
-$$
-\vec v_{t+\delta} = M_\delta \vec v_t
+$$ \vec v_{t+\delta} = M_\delta \vec v_t
 $$
 
 The key idea is that for any fixed relative offset $\delta$, the same matrix $M_\delta$ maps the positional encoding at position $t$ to the positional encoding at position $t+\delta$.
