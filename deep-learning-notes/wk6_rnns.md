@@ -1,4 +1,4 @@
-- [Recurrent Neural Networks](#recurrent-neural-networks)
+- [Wk 6 Recurrent Neural Networks](#wk-6-recurrent-neural-networks)
   - [Coming From Non-Sequential Data](#coming-from-non-sequential-data)
   - [Sequence Modelling](#sequence-modelling)
     - [Intro](#intro)
@@ -39,7 +39,7 @@ Need to go through ~~10.5~~, ~~10.6~~, ~~10.7~~, 10.8
 
 Up to 10.7.3.
 
-# Recurrent Neural Networks
+# Wk 6 Recurrent Neural Networks
 
 ## Coming From Non-Sequential Data
 

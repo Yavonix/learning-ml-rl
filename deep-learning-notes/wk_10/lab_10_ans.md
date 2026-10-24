@@ -1,3 +1,5 @@
+# Lab 10 Answers Bert
+
 ## Part 1
 
 1. The "Bitter Lesson" in AI suggests that complex, hand-engineered approaches will 

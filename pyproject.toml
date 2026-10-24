@@ -37,6 +37,7 @@ dependencies = [
     "gensim>=4.4.0",
     "torchtext>=0.18.0",
     "datasets>=4.8.5",
+    "einops>=0.8.1",
 ]
 
 [tool.uv.sources]

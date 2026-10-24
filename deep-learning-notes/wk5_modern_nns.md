@@ -1,4 +1,4 @@
-- [Takeaways](#takeaways)
+- [Wk 5 Modern RNNs](#wk-5-modern-rnns)
   - [(VGG) 2 3x3 vs 1 5x5 Convolution](#vgg-2-3x3-vs-1-5x5-convolution)
   - [(NiN)](#nin)
   - [GoogLeNet](#googlenet)
@@ -10,7 +10,7 @@
   - [GoogLeNet](#googlenet-1)
   - [Batch Normalisation](#batch-normalisation)
 
-# Takeaways
+# Wk 5 Modern RNNs
 
 ## (VGG) 2 3x3 vs 1 5x5 Convolution
 

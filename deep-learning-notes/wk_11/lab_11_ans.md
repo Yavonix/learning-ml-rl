@@ -1,3 +1,5 @@
+# Lab 11 Answers LLM
+
 ## Part 1 T/F
 
 1. According to the Chinchilla (2022) scaling laws, researchers should scale up model parameters much faster than they scale up the dataset size.

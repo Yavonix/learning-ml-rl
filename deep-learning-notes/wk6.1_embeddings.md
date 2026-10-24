@@ -1,6 +1,7 @@
-- [What we actually do](#what-we-actually-do)
+- [Wk 6.1 Embeddings](#wk-61-embeddings)
+  - [What we actually do](#what-we-actually-do)
   - [Byte Pair Encoding (BPE)](#byte-pair-encoding-bpe)
-- [Embeddings](#embeddings)
+  - [Embeddings](#embeddings)
   - [Word2Vec](#word2vec)
   - [GloVe](#glove)
   - [ELMo](#elmo)
@@ -10,7 +11,9 @@
 
 ![alt text](img/attention_archs.png)
 
-# What we actually do
+# Wk 6.1 Embeddings
+
+## What we actually do
 
 Old setup: `word → pretrained GloVe vector → downstream model`
 
@@ -47,7 +50,7 @@ So overall
 - Learned rules are applied determinstically at inference time to new text
 - Naturally capturs morphological structure (prefixes, suffixes e.g., un, ing, er)
 
-# Embeddings
+## Embeddings
 
 In general an LLM or RNN can learn its own embeddings. However it is possible to use pretrained word embeddings.
 
